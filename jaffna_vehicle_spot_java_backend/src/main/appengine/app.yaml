@@ -1,0 +1,4 @@
+runtime: java17
+# Optional configuration properties
+env_variables:
+  SPRING_PROFILES_ACTIVE: "prod"
