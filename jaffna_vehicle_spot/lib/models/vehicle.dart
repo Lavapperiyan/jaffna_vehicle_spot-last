@@ -46,12 +46,12 @@ class Vehicle {
       'Happier leather steering wheel...',
       'Finishing the seats with black...'
     ],
-    this.chassisNo = 'MH95S-285447',
-    this.engineNo = 'R06D-WA04C-K419941',
-    this.registrationNo = 'NP CBR-3153',
-    this.color = 'PEARL WHITE',
-    this.yearOfManufacture = '2025',
-    this.stockUpdateDate = '2026-03-18',
+    this.chassisNo = 'Not specified',
+    this.engineNo = 'Not specified',
+    this.registrationNo = 'Unregistered',
+    this.color = 'Not specified',
+    this.yearOfManufacture = 'Not specified',
+    this.stockUpdateDate = 'Recently',
     this.garageDetails,
   });
 
