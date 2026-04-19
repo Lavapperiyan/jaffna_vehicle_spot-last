@@ -1,4 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/api_config.dart';
 
 class Vehicle {
   final String id;
@@ -8,7 +11,7 @@ class Vehicle {
   final String category;
   final String price;
   final String status;
-  final String imagePath;
+  final String imageUrl;
   final String consumption;
   final String power;
   final String speed;
@@ -32,7 +35,7 @@ class Vehicle {
     required this.category,
     required this.price,
     required this.status,
-    required this.imagePath,
+    required this.imageUrl,
     this.make = 'Unknown',
     this.model = 'Unknown',
     this.consumption = '4.2 liters',
@@ -55,10 +58,55 @@ class Vehicle {
     this.garageDetails,
   });
 
+  factory Vehicle.fromJson(Map<String, dynamic> json) {
+    return Vehicle(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      name: json['name'] ?? '',
+      make: json['make'] ?? 'Unknown',
+      model: json['model'] ?? 'Unknown',
+      category: json['category'] ?? '',
+      price: json['price']?.toString() ?? '',
+      status: json['status'] ?? 'Available',
+      imageUrl: json['image_url'] ?? json['imageUrl'] ?? json['imagePath'] ?? 'assets/toyota_chr.png',
+      yearOfManufacture: json['year']?.toString() ?? json['year_of_manufacture']?.toString() ?? json['yearOfManufacture']?.toString() ?? 'Not specified',
+      branch: json['branch'] ?? 'Jaffna',
+      chassisNo: json['chassis_no'] ?? json['chassisNo'] ?? 'Not specified',
+      engineNo: json['engine_no'] ?? json['engineNo'] ?? 'Not specified',
+      registrationNo: json['registration_no'] ?? json['registrationNo'] ?? 'Unregistered',
+      color: json['color'] ?? 'Not specified',
+      consumption: json['consumption'] ?? '4.2 liters',
+      power: json['power'] ?? '184 hp',
+      speed: json['speed'] ?? '180 km',
+      speedUp: json['speed_up'] ?? json['speedUp'] ?? '11.1 sec',
+      fuelType: json['fuel_type'] ?? json['fuelType'] ?? 'Petrol',
+      stockUpdateDate: json['updated_at'] ?? json['updatedAt'] ?? '',
+      garageDetails: (json['status'] == 'In Garage' && json['garage_records'] != null && (json['garage_records'] as List).isNotEmpty)
+          ? GarageDetails.fromJson((json['garage_records'] as List).first)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'make': make,
+    'model': model,
+    'category': category,
+    'price': price,
+    'status': status,
+    'image_url': imageUrl,
+    'branch': branch,
+    'chassis_no': chassisNo,
+    'engine_no': engineNo,
+    'registration_no': registrationNo,
+    'color': color,
+    'year': yearOfManufacture,
+  };
+
   Vehicle copyWith({
     String? status,
     GarageDetails? garageDetails,
     String? price,
+    String? imageUrl,
   }) {
     return Vehicle(
       id: id,
@@ -68,7 +116,7 @@ class Vehicle {
       category: category,
       price: price ?? this.price,
       status: status ?? this.status,
-      imagePath: imagePath,
+      imageUrl: imageUrl ?? this.imageUrl,
       consumption: consumption,
       power: power,
       speed: speed,
@@ -111,129 +159,178 @@ class GarageDetails {
     required this.totalAmount,
     required this.advanceAmount,
   });
-}
 
-final List<Vehicle> initialMockVehicles = [
-  Vehicle(
-    id: '1',
-    name: 'TOYOTA C-HR',
-    make: 'Toyota',
-    model: 'C-HR',
-    category: 'Car',
-    price: '778,970',
-    status: 'Available',
-    imagePath: 'assets/toyota_chr.png',
-  ),
-  Vehicle(
-    id: '2',
-    name: 'BMW M5 Competition',
-    make: 'BMW',
-    model: 'M5',
-    category: 'Car',
-    price: '24.5M',
-    status: 'Available',
-    imagePath: 'assets/toyota_chr.png', // Placeholder
-  ),
-  Vehicle(
-    id: '3',
-    name: 'MITSUBISHI CANTER',
-    make: 'Mitsubishi',
-    model: 'Canter',
-    category: 'Load Vehicle',
-    price: '12.5M',
-    status: 'Available',
-    imagePath: 'assets/toyota_chr.png', // Placeholder
-  ),
-  Vehicle(
-    id: '4',
-    name: 'NISSAN CARAVAN',
-    make: 'Nissan',
-    model: 'Caravan',
-    category: 'Van',
-    price: '18.5M',
-    status: 'Sold',
-    imagePath: 'assets/toyota_chr.png', // Placeholder
-  ),
-  Vehicle(
-    id: '5',
-    name: 'BYD ATTO 3',
-    make: 'BYD',
-    model: 'Atto 3',
-    category: 'Electric',
-    price: '32.0M',
-    status: 'Available',
-    imagePath: 'assets/toyota_chr.png', // Placeholder
-  ),
-];
+  factory GarageDetails.fromJson(Map<String, dynamic> json) {
+    return GarageDetails(
+      garageName: json['garage_name'] ?? '',
+      ownerName: json['owner_name'] ?? '',
+      contactNumber: json['contact_number'] ?? '',
+      address: json['address'] ?? '',
+      reason: json['problem_description'] ?? json['reason'] ?? '',
+      date: json['date'] ?? '',
+      driverName: json['driver_name'] ?? '',
+      driverDetails: json['driver_details'] ?? '',
+      totalAmount: double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
+      advanceAmount: double.tryParse(json['advance_amount']?.toString() ?? '0') ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'garage_name': garageName,
+    'owner_name': ownerName,
+    'contact_number': contactNumber,
+    'address': address,
+    'problem_description': reason,
+    'date': date,
+    'driver_name': driverName,
+    'total_amount': totalAmount,
+    'advance_amount': advanceAmount,
+  };
+}
 
 class VehicleService {
   static final VehicleService _instance = VehicleService._internal();
   factory VehicleService() => _instance;
-  VehicleService._internal();
-
-  final ValueNotifier<List<Vehicle>> vehiclesNotifier = ValueNotifier<List<Vehicle>>(initialMockVehicles);
-
-  void addVehicle(Vehicle vehicle) {
-    vehiclesNotifier.value = [...vehiclesNotifier.value, vehicle];
+  VehicleService._internal() {
+    fetchVehicles();
   }
 
-  void removeVehicle(String id) {
-    vehiclesNotifier.value = vehiclesNotifier.value.where((v) => v.id != id).toList();
-  }
+  final _supabase = Supabase.instance.client;
+  final ValueNotifier<List<Vehicle>> vehiclesNotifier = ValueNotifier<List<Vehicle>>([]);
 
-  void updateVehiclePrice(String id, String newPrice) {
-    vehiclesNotifier.value = vehiclesNotifier.value.map((v) {
-      if (v.id == id) {
-        return Vehicle(
-          id: v.id,
-          name: v.name,
-          make: v.make,
-          model: v.model,
-          category: v.category,
-          price: newPrice,
-          status: v.status,
-          imagePath: v.imagePath,
-          consumption: v.consumption,
-          power: v.power,
-          speed: v.speed,
-          speedUp: v.speedUp,
-          fuelType: v.fuelType,
-          configurations: v.configurations,
-          branch: v.branch,
-          chassisNo: v.chassisNo,
-          engineNo: v.engineNo,
-          registrationNo: v.registrationNo,
-          color: v.color,
-          yearOfManufacture: v.yearOfManufacture,
-          stockUpdateDate: v.stockUpdateDate,
-        );
+  Future<void> fetchVehicles() async {
+    try {
+      // Fetch vehicles and garage records separately to avoid schema relation errors
+      final vResponse = await _supabase.from(ApiConfig.tableVehicles).select();
+      final gResponse = await _supabase.from('garage_records').select();
+
+      if (vResponse.isNotEmpty) {
+        final List<dynamic> vData = vResponse as List;
+        final List<dynamic> gData = gResponse as List;
+        
+        vehiclesNotifier.value = vData.map((v) {
+          // Manually join garage record if it exists
+          final String vId = (v['id'] ?? v['_id'] ?? '').toString();
+          
+          final matches = gData.where((g) => 
+            (g['vehicle_id']?.toString() == vId) && (g['status'] == 'In Garage')
+          ).toList();
+          
+          final garageRecord = matches.isNotEmpty ? matches.first : null;
+          
+          if (garageRecord != null) {
+            v['garage_records'] = [garageRecord]; // Inject for fromJson
+          }
+          
+          return Vehicle.fromJson(v);
+        }).toList();
       }
-      return v;
-    }).toList();
+    } catch (e) {
+      debugPrint('Fetch vehicles error: $e');
+    }
   }
 
-  void moveToGarage(String vehicleId, GarageDetails details) {
-    vehiclesNotifier.value = vehiclesNotifier.value.map((v) {
-      if (v.id == vehicleId) {
-        return v.copyWith(
-          status: 'In Garage',
-          garageDetails: details,
-        );
-      }
-      return v;
-    }).toList();
+  Future<String?> uploadImage(Uint8List bytes, String fileName) async {
+    try {
+      final path = 'vehicle-images/$fileName';
+
+      await _supabase.storage.from('vehicle-images').uploadBinary(path, bytes);
+      final String imageUrl = _supabase.storage.from('vehicle-images').getPublicUrl(path);
+      return imageUrl;
+    } catch (e) {
+      debugPrint('Upload image error: $e');
+      rethrow;
+    }
   }
 
-  void returnFromGarage(String vehicleId) {
-    vehiclesNotifier.value = vehiclesNotifier.value.map((v) {
-      if (v.id == vehicleId) {
-        return v.copyWith(
-          status: 'Available',
-          garageDetails: null, // Clear details or keep them? Usually clear for current state.
-        );
-      }
-      return v;
-    }).toList();
+  Future<bool> addVehicle(Vehicle vehicle) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableVehicles)
+          .insert(vehicle.toJson());
+
+      await fetchVehicles();
+      return true;
+    } catch (e) {
+      debugPrint('Add vehicle error: $e');
+      rethrow; // Throw error to be caught by UI
+    }
+  }
+
+  Future<bool> updateVehiclePrice(String id, String newPrice) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableVehicles)
+          .update({'price': newPrice})
+          .eq('id', id);
+
+      await fetchVehicles();
+      return true;
+    } catch (e) {
+      debugPrint('Update price error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> moveToGarage(String vehicleId, GarageDetails details) async {
+    try {
+      // 1. Add to garage records
+      await _supabase
+          .from('garage_records')
+          .insert({
+            'vehicle_id': vehicleId,
+            ...details.toJson(),
+          });
+
+      // 2. Update vehicle status
+      await _supabase
+          .from(ApiConfig.tableVehicles)
+          .update({'status': 'In Garage'})
+          .eq('id', vehicleId);
+
+      await fetchVehicles();
+      return true;
+    } catch (e) {
+      debugPrint('Move to garage error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> returnFromGarage(String vehicleId) async {
+    try {
+      // 1. Update vehicle status to Available
+      await _supabase
+          .from(ApiConfig.tableVehicles)
+          .update({'status': 'Available'})
+          .eq('id', vehicleId);
+
+      // 2. Update the active garage record status to Returned
+      await _supabase
+          .from('garage_records')
+          .update({'status': 'Returned'})
+          .eq('vehicle_id', vehicleId)
+          .eq('status', 'In Garage');
+
+      await fetchVehicles();
+      return true;
+    } catch (e) {
+      debugPrint('Return from garage error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> removeVehicle(String id) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableVehicles)
+          .delete()
+          .eq('id', id);
+
+      await fetchVehicles();
+      return true;
+    } catch (e) {
+      debugPrint('Remove vehicle error: $e');
+      return false;
+    }
   }
 }
-

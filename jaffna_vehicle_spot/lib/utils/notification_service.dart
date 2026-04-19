@@ -13,7 +13,7 @@ class NotificationService {
     if (kIsWeb) return; // Not supported on web without extra setup
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_main');
     
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
