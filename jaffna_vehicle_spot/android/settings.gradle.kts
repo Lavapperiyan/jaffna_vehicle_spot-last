@@ -1,5 +1,3 @@
-rootProject.name = "jaffna_vehicle_spot"
-
 pluginManagement {
     val flutterSdkPath =
         run {

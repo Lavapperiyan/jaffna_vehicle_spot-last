@@ -1,57 +1,79 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/api_config.dart';
 import 'branch.dart';
 
 class BranchService {
   // Singleton pattern
   static final BranchService _instance = BranchService._internal();
   factory BranchService() => _instance;
-  BranchService._internal();
+  BranchService._internal() {
+    fetchBranches();
+  }
 
-  final ValueNotifier<List<Branch>> branchesNotifier = ValueNotifier<List<Branch>>([
-    // Mock data for initial testing
-    Branch(
-      id: 'BR-1',
-      name: 'Poonakari Branch',
-      code: 'PNK01',
-      address: '123 Main Junction, Poonakari',
-      phone: '+94771234567',
-      email: 'poonakari@jaffnavehiclespot.com',
-      managerName: 'Kumar Silva',
-      managerContact: '+94771234568',
-      isActive: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 100)),
-    ),
-    Branch(
-      id: 'BR-2',
-      name: 'Kilinochchi Branch',
-      code: 'KLN01',
-      address: '45 A9 Road, Kilinochchi',
-      phone: '+94772345678',
-      email: 'kilinochchi@jaffnavehiclespot.com',
-      managerName: 'Ravi Fernando',
-      managerContact: '+94772345679',
-      isActive: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 50)),
-    ),
-  ]);
+  final _supabase = Supabase.instance.client;
+  final ValueNotifier<List<Branch>> branchesNotifier = ValueNotifier<List<Branch>>([]);
 
   List<Branch> get allBranches => branchesNotifier.value;
 
-  void addBranch(Branch branch) {
-    branchesNotifier.value = [...branchesNotifier.value, branch];
-  }
+  Future<void> fetchBranches() async {
+    try {
+      final response = await _supabase
+          .from(ApiConfig.tableBranches)
+          .select()
+          .order('name');
 
-  void updateBranch(Branch branch) {
-    final index = branchesNotifier.value.indexWhere((b) => b.id == branch.id);
-    if (index != -1) {
-      final newList = List<Branch>.from(branchesNotifier.value);
-      newList[index] = branch;
-      branchesNotifier.value = newList;
+      if (response.isNotEmpty) {
+        final List<dynamic> data = response;
+        branchesNotifier.value = data.map((b) => Branch.fromJson(b)).toList();
+      }
+    } catch (e) {
+      debugPrint('Fetch branches error: $e');
     }
   }
 
-  void deleteBranch(String branchId) {
-    branchesNotifier.value = branchesNotifier.value.where((b) => b.id != branchId).toList();
+  Future<bool> addBranch(Branch branch) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableBranches)
+          .insert(branch.toJson());
+
+      await fetchBranches();
+      return true;
+    } catch (e) {
+      debugPrint('Add branch error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateBranch(Branch branch) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableBranches)
+          .update(branch.toJson())
+          .eq('id', branch.id);
+
+      await fetchBranches();
+      return true;
+    } catch (e) {
+      debugPrint('Update branch error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteBranch(String branchId) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableBranches)
+          .delete()
+          .eq('id', branchId);
+      
+      await fetchBranches();
+      return true;
+    } catch (e) {
+      debugPrint('Delete branch error: $e');
+      return false;
+    }
   }
 
   bool isCodeUnique(String code, {String? excludeBranchId}) {

@@ -20,7 +20,9 @@ class _LayoutState extends State<MainLayout> {
   late List<Widget> _cachedScreens;
 
   bool get _isStaff => AuthService().userPost.toLowerCase().contains('staff');
-  bool get _isManager => AuthService().userPost.toLowerCase().contains('manager');
+  bool get _isManager => AuthService().userPost.toLowerCase().contains('manager') 
+      || AuthService().userPost.toLowerCase().contains('admin')
+      || AuthService().userName.toLowerCase().contains('manager');
 
   @override
   void initState() {
@@ -30,10 +32,10 @@ class _LayoutState extends State<MainLayout> {
 
   void _initializeScreens() {
     _cachedScreens = [
-      _isStaff
-          ? StaffHomeScreen(onTabChange: _handleTabChange)
-          : _isManager
-              ? ManagerHomeScreen(onTabChange: _handleTabChange)
+      _isManager
+          ? ManagerHomeScreen(onTabChange: _handleTabChange)
+          : _isStaff
+              ? StaffHomeScreen(onTabChange: _handleTabChange)
               : HomeScreen(onTabChange: _handleTabChange),
       const InventoryScreen(),
       const BillingScreen(),

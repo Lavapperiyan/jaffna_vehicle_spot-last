@@ -23,6 +23,32 @@ class Branch {
     required this.createdAt,
   });
 
+  factory Branch.fromJson(Map<String, dynamic> json) {
+    return Branch(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? '',
+      code: json['branch_code'] ?? '',
+      address: json['address'] ?? '',
+      phone: json['phone'] ?? '',
+      email: json['email'] ?? '',
+      managerName: json['manager_name'] ?? '',
+      managerContact: json['manager_contact'] ?? '',
+      isActive: json['status'] == 'Active',
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'branch_code': code,
+    'address': address,
+    'phone': phone,
+    'email': email,
+    'manager_name': managerName,
+    'manager_contact': managerContact,
+    'status': isActive ? 'Active' : 'Inactive',
+  };
+
   Branch copyWith({
     String? id,
     String? name,

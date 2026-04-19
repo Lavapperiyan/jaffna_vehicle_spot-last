@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../models/commission.dart';
+import '../models/auth_service.dart';
+import '../models/invoice.dart';
 
 class CommissionReportsScreen extends StatefulWidget {
   const CommissionReportsScreen({super.key});
@@ -12,6 +14,7 @@ class CommissionReportsScreen extends StatefulWidget {
 
 class _CommissionReportsScreenState extends State<CommissionReportsScreen> {
   final CommissionService _commissionService = CommissionService();
+  
   String _searchQuery = '';
   DateTime? _startDate;
   DateTime? _endDate;
@@ -30,6 +33,10 @@ class _CommissionReportsScreenState extends State<CommissionReportsScreen> {
         title: const Text('Commission Reports', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            icon: const Icon(LucideIcons.refreshCw, size: 20),
+            onPressed: () => _commissionService.fetchCommissions(),
+          ),
+          IconButton(
             icon: const Icon(LucideIcons.download),
             onPressed: () {
               // PDF Export Placeholder
@@ -47,22 +54,54 @@ class _CommissionReportsScreenState extends State<CommissionReportsScreen> {
             child: ValueListenableBuilder<List<Commission>>(
               valueListenable: _commissionService.commissionsNotifier,
               builder: (context, commissions, child) {
+                final String userRole = AuthService().userPost.toLowerCase();
+                final bool isAdmin = userRole.contains('admin');
+                final String currentBranch = AuthService().branch.trim().toLowerCase();
+
                 final filtered = commissions.where((c) {
                   final matchesSearch = c.agentName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                                       c.reference.toLowerCase().contains(_searchQuery.toLowerCase());
                   
                   bool matchesDate = true;
                   if (_startDate != null && _endDate != null) {
-                    DateTime date = DateTime.parse(c.date);
-                    matchesDate = date.isAfter(_startDate!.subtract(const Duration(days: 1))) && 
-                                 date.isBefore(_endDate!.add(const Duration(days: 1)));
+                    DateTime? date = DateTime.tryParse(c.date);
+                    if (date != null) {
+                      matchesDate = date.isAfter(_startDate!.subtract(const Duration(days: 1))) && 
+                                   date.isBefore(_endDate!.add(const Duration(days: 1)));
+                    }
+                  }
+
+                  // Branch Filtering (Join with invoices)
+                  bool matchesBranch = true;
+                  if (!isAdmin) {
+                    final relatedInvoice = InvoiceService().invoicesNotifier.value.firstWhere(
+                      (inv) => inv.id == c.invoiceId,
+                      orElse: () => Invoice(id: '', customerName: '', customerAddress: '', customerContact: '', customerNic: '', vehicleName: '', chassisNo: '', engineNo: '', registrationNo: '', vehicleType: '', fuelType: '', color: '', year: '', amount: '', leaseAmount: '', date: '', status: InvoiceStatus.paid, branch: 'unknown'),
+                    );
+                    
+                    final String invBranch = relatedInvoice.branch.trim().toLowerCase();
+                    matchesBranch = currentBranch == 'all branches' || invBranch == currentBranch || invBranch == 'unknown';
                   }
                   
-                  return matchesSearch && matchesDate;
+                  return matchesSearch && matchesDate && matchesBranch;
                 }).toList();
 
                 if (filtered.isEmpty) {
-                  return const Center(child: Text('No commission records found', style: TextStyle(color: Colors.grey)));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(LucideIcons.percent, size: 48, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isEmpty && _startDate == null
+                            ? 'No commission records found' 
+                            : 'No matching commission records found',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 return ListView.builder(

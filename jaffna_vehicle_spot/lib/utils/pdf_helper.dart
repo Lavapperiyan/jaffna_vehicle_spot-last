@@ -5,6 +5,8 @@ import 'package:printing/printing.dart';
 import '../models/invoice.dart';
 import '../models/staff.dart';
 import '../models/customer.dart';
+import '../models/attendance.dart';
+import 'package:intl/intl.dart';
 
 class PdfHelper {
   static Future<pw.Document> generateInvoicePdf(Invoice invoice) async {
@@ -200,25 +202,6 @@ class PdfHelper {
                             children: [
                               pw.TextSpan(text: 'LKR ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
                               pw.TextSpan(text: invoice.amount, style: pw.TextStyle(fontSize: 8, decoration: pw.TextDecoration.underline)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Lease To Be', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.RichText(
-                          text: pw.TextSpan(
-                            children: [
-                              pw.TextSpan(text: 'LKR ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
-                              pw.TextSpan(text: invoice.leaseAmount, style: pw.TextStyle(fontSize: 8, decoration: pw.TextDecoration.underline)),
                             ],
                           ),
                         ),
@@ -697,6 +680,245 @@ class PdfHelper {
   static Future<void> downloadSalesReportPdf(List<Invoice> invoices, String title) async {
     final pdf = await generateSalesReportPdf(invoices, title);
     await Printing.sharePdf(bytes: await pdf.save(), filename: 'sales_report_${title.replaceAll(' ', '_')}.pdf');
+  }
+  
+  static Future<pw.Document> generateStaffUsageAuditPdf(List<Attendance> attendances, String title) async {
+    final pdf = pw.Document();
+
+    final ByteData logoData = await rootBundle.load('assets/logo.jpg');
+    final Uint8List logoBytes = logoData.buffer.asUint8List();
+    final pw.MemoryImage logoImage = pw.MemoryImage(logoBytes);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (pw.Context context) => pw.Column(
+          children: [
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Image(logoImage, height: 45),
+                      pw.SizedBox(height: 8),
+                      pw.Text('JAFFNA VEHICLE SPOT (PVT) LTD', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13, color: PdfColors.blue900)),
+                      pw.Text('Staff Application Usage & Audit Report', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('Period: $title', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                    ],
+                ),
+                pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Report Generated:', style: pw.TextStyle(fontSize: 8)),
+                      pw.Text(DateFormat('MMM d, yyyy @ HH:mm').format(DateTime.now()), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 4),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: const pw.BoxDecoration(color: PdfColors.green100),
+                        child: pw.Text('OFFICIAL AUDIT', style: pw.TextStyle(fontSize: 7, color: PdfColors.green900, fontWeight: pw.FontWeight.bold)),
+                      ),
+                    ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 10),
+            pw.Divider(thickness: 1.5, color: PdfColors.blue900),
+            pw.SizedBox(height: 15),
+          ],
+        ),
+        build: (pw.Context context) {
+          // Flatten attendances but ensure sorting
+          final sorted = List<Attendance>.from(attendances);
+          sorted.sort((a, b) => b.checkIn.compareTo(a.checkIn));
+
+          return [
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blue900),
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey200, width: 0.5))),
+              headerAlignment: pw.Alignment.centerLeft,
+              cellAlignment: pw.Alignment.centerLeft,
+              columnWidths: {
+                0: const pw.FlexColumnWidth(2),
+                1: const pw.FlexColumnWidth(3),
+                2: const pw.FlexColumnWidth(2.5),
+                3: const pw.FlexColumnWidth(2.5),
+                4: const pw.FlexColumnWidth(1.5),
+                5: const pw.FlexColumnWidth(1.2),
+              },
+              data: [
+                ['Date', 'Staff Member', 'App Login', 'App Logout', 'Duration', 'Branch'],
+                ...sorted.map((a) => [
+                  DateFormat('dd/MM/yyyy').format(a.checkIn),
+                  a.userName.toUpperCase(),
+                  DateFormat('hh:mm:ss a').format(a.checkIn),
+                  a.checkOut != null ? DateFormat('hh:mm:ss a').format(a.checkOut!) : 'STILL ACTIVE',
+                  '${a.currentTotalHours.toStringAsFixed(2)}h',
+                  a.branch,
+                ]),
+              ],
+            ),
+          ];
+        },
+        footer: (pw.Context context) => pw.Column(
+          children: [
+            pw.SizedBox(height: 20),
+            pw.Divider(thickness: 0.5),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Internal Audit Document - Jaffna Vehicle Spot', style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600, fontStyle: pw.FontStyle.italic)),
+                pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return pdf;
+  }
+
+  static Future<pw.Document> generateStaffTimeReportPdf(List<Attendance> attendances, String title) async {
+    final pdf = pw.Document();
+
+    final ByteData logoData = await rootBundle.load('assets/logo.jpg');
+    final Uint8List logoBytes = logoData.buffer.asUint8List();
+    final pw.MemoryImage logoImage = pw.MemoryImage(logoBytes);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(30),
+        header: (pw.Context context) => pw.Column(
+          children: [
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Image(logoImage, height: 40),
+                    pw.SizedBox(height: 5),
+                    pw.Text('JAFFNA VEHICLE SPOT (PVT) LTD', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                    pw.Text('Staff Spending Time Report - $title', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Generated on:', style: pw.TextStyle(fontSize: 8)),
+                    pw.Text(DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 10),
+            pw.Divider(thickness: 0.5),
+            pw.SizedBox(height: 10),
+          ],
+        ),
+        build: (pw.Context context) {
+          Map<String, List<Attendance>> grouped = {};
+          for (var a in attendances) {
+            grouped.putIfAbsent(a.userName, () => []).add(a);
+          }
+
+          List<List<String>> summaryData = [
+            ['Staff Name', 'Sessions', 'Hours', 'Overtime']
+          ];
+
+          for (var entry in grouped.entries) {
+            double totalHours = 0;
+            double totalOvertime = 0;
+            for (var a in entry.value) {
+              totalHours += a.currentTotalHours;
+              totalOvertime += a.overtimeHours;
+            }
+            summaryData.add([
+              entry.key,
+              entry.value.length.toString(),
+              '${totalHours.toStringAsFixed(2)} hrs',
+              '${totalOvertime.toStringAsFixed(2)} hrs',
+            ]);
+          }
+
+          return [
+            pw.Header(
+              level: 1,
+              text: 'Staff Performance Summary',
+              textStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13, color: PdfColors.blue900),
+              decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blue900, width: 2))),
+            ),
+            pw.SizedBox(height: 12),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blue900),
+              cellStyle: const pw.TextStyle(fontSize: 10),
+              cellAlignment: pw.Alignment.centerLeft,
+              headerAlignment: pw.Alignment.centerLeft,
+              data: summaryData,
+              border: pw.TableBorder.all(color: PdfColors.grey300),
+            ),
+            pw.SizedBox(height: 30),
+            pw.Header(
+              level: 1,
+              text: 'Detailed Daily Logs',
+              textStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13, color: PdfColors.blue900),
+              decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blue900, width: 2))),
+            ),
+            pw.SizedBox(height: 12),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey800),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              cellAlignment: pw.Alignment.centerLeft,
+              headerAlignment: pw.Alignment.centerLeft,
+              data: <List<String>>[
+                <String>['Date', 'Staff', 'Check-In', 'Check-Out', 'Status', 'Hrs', 'OT'],
+                ...attendances.map((a) => [
+                      a.date,
+                      a.userName,
+                      DateFormat('hh:mm a').format(a.checkIn),
+                      a.checkOut != null ? DateFormat('hh:mm a').format(a.checkOut!) : '-- : --',
+                      a.status,
+                      a.currentTotalHours.toStringAsFixed(1),
+                      a.overtimeHours.toStringAsFixed(1),
+                    ]),
+              ],
+              border: pw.TableBorder.all(color: PdfColors.grey300),
+            ),
+          ];
+        },
+        footer: (pw.Context context) => pw.Column(
+          children: [
+            pw.Divider(thickness: 0.5),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Jaffna Vehicle Spot (Pvt) Ltd', style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return pdf;
+  }
+
+  static Future<void> downloadStaffUsageAuditPdf(List<Attendance> attendances, String title) async {
+    final pdf = await generateStaffUsageAuditPdf(attendances, title);
+    await Printing.sharePdf(bytes: await pdf.save(), filename: 'staff_usage_${title.replaceAll(' ', '_')}.pdf');
+  }
+
+  static Future<void> downloadStaffTimeReportPdf(List<Attendance> attendances, String title) async {
+    final pdf = await generateStaffTimeReportPdf(attendances, title);
+    await Printing.sharePdf(bytes: await pdf.save(), filename: 'staff_time_report_${title.replaceAll(' ', '_')}.pdf');
   }
 }
 

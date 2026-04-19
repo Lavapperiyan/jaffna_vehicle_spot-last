@@ -10,6 +10,7 @@ import 'reports_screen.dart';
 import 'login_screen.dart';
 import 'garage_vehicles_screen.dart';
 import 'commission_reports_screen.dart';
+import '../models/invoice.dart';
 
 const Color kBrandDark = Color(0xFF2C3545);
 const Color kBrandGold = Color(0xFFE8BC44);
@@ -22,8 +23,11 @@ class ManagerHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: CustomScrollView(
-        slivers: [
+      body: RefreshIndicator(
+        onRefresh: () => InvoiceService().fetchInvoices(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
           // 1. Sleek Modern Header
           SliverToBoxAdapter(
             child: Container(
@@ -114,7 +118,7 @@ class ManagerHomeScreen extends StatelessWidget {
                             const Icon(LucideIcons.shieldCheck, color: kBrandGold, size: 14),
                             const SizedBox(width: 6),
                             Text(
-                              AuthService().userPost.split(' ').first,
+                              AuthService().userPost.toLowerCase().contains('admin') ? 'Admin' : 'Manager',
                               style: const TextStyle(
                                 color: kBrandGold,
                                 fontSize: 12,
@@ -234,20 +238,6 @@ class ManagerHomeScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(LucideIcons.logOut, color: Colors.white70, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          AuthService().logout();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
-                            (route) => false,
-                          );
-                        },
-                      ),
                     ],
                   ),
                 ],
@@ -327,47 +317,113 @@ class ManagerHomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: 130,
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _buildCompactMetric(
-                        icon: LucideIcons.target,
-                        color: const Color(0xFFF59E0B),
-                        label: 'Target Goal',
-                        value: 'Rs. 25M',
-                        trend: 'Monthly',
-                      ),
-                      ValueListenableBuilder<List<Staff>>(
-                        valueListenable: StaffService().staffsNotifier,
-                        builder: (context, staffs, _) => _buildCompactMetric(
-                          icon: LucideIcons.users,
-                          color: const Color(0xFF6366F1),
-                          label: 'Team Size',
-                          value: '${staffs.length}',
-                          trend: 'Active',
-                        ),
-                      ),
-                      ValueListenableBuilder<List<Vehicle>>(
-                        valueListenable: VehicleService().vehiclesNotifier,
-                        builder: (context, vehicles, _) => _buildCompactMetric(
-                          icon: LucideIcons.package,
-                          color: kBrandDark,
-                          label: 'Branch Stock',
-                          value: '${vehicles.length}',
-                          trend: 'Items',
-                        ),
-                      ),
-                      _buildCompactMetric(
-                        icon: LucideIcons.userPlus,
-                        color: const Color(0xFF10B981),
-                        label: 'Recent Users',
-                        value: '28',
-                        trend: '+4 MTD',
-                      ),
-                    ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: RepaintBoundary(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth > 600;
+
+                        final metricWidgets = [
+                          ValueListenableBuilder<List<Invoice>>(
+                            valueListenable: InvoiceService().invoicesNotifier,
+                            builder: (context, invoices, _) {
+                              final currentBranch = AuthService().branch;
+                              double total = 0;
+                              for (var inv in invoices) {
+                                final String userBranchLower = currentBranch.trim().toLowerCase();
+                                final String invBranchLower = inv.branch.trim().toLowerCase();
+
+                                bool branchMatch = userBranchLower == 'all branches' 
+                                    || invBranchLower == userBranchLower 
+                                    || invBranchLower.isEmpty;
+                                    
+                                if (branchMatch) {
+                                  total += double.tryParse(inv.amount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+                                }
+                              }
+                              String valStr = total >= 1000000 
+                                  ? '${(total / 1000000).toStringAsFixed(1)}M'
+                                  : (total >= 1000 ? '${(total / 1000).toStringAsFixed(1)}K' : total.toStringAsFixed(0));
+                                  
+                              return _buildCompactMetric(
+                                icon: LucideIcons.target,
+                                color: const Color(0xFFF59E0B),
+                                label: 'Total Revenue',
+                                value: 'Rs. $valStr',
+                                trend: 'Branch',
+                              );
+                            },
+                          ),
+                          ValueListenableBuilder<List<Staff>>(
+                            valueListenable: StaffService().staffsNotifier,
+                            builder: (context, staffs, _) {
+                              final currentBranch = AuthService().branch.trim().toLowerCase();
+                              final branchStaff = staffs.where((s) {
+                                final String staffBranch = s.branch.trim().toLowerCase();
+                                final bool isBranchMatch = currentBranch == 'all branches' 
+                                    || staffBranch == currentBranch 
+                                    || staffBranch.isEmpty;
+                                
+                                // Only count subordinates for "Team Size"
+                                final bool isSubordinate = s.role != StaffRole.admin && s.role != StaffRole.manager;
+                                
+                                return isBranchMatch && isSubordinate;
+                              }).toList();
+                              
+                              return _buildCompactMetric(
+                                icon: LucideIcons.users,
+                                color: const Color(0xFF6366F1),
+                                label: 'Team Size',
+                                value: '${branchStaff.length}',
+                                trend: 'Active',
+                              );
+                            },
+                          ),
+                          ValueListenableBuilder<List<Vehicle>>(
+                            valueListenable: VehicleService().vehiclesNotifier,
+                            builder: (context, vehicles, _) {
+                              final currentBranch = AuthService().branch.trim().toLowerCase();
+                              final branchVehicles = vehicles.where((v) {
+                                final String vBranch = v.branch.trim().toLowerCase();
+                                return currentBranch == 'all branches' || vBranch == currentBranch || vBranch.isEmpty;
+                              }).toList();
+
+                              return _buildCompactMetric(
+                                icon: LucideIcons.package,
+                                color: kBrandDark,
+                                label: 'Branch Stock',
+                                value: '${branchVehicles.length}',
+                                trend: 'Items',
+                              );
+                            },
+                          ),
+                          _buildCompactMetric(
+                            icon: LucideIcons.userPlus,
+                            color: const Color(0xFF10B981),
+                            label: 'Service Status',
+                            value: 'Online',
+                            trend: 'Now',
+                          ),
+                        ];
+
+                        if (isWide) {
+                          return Wrap(
+                            spacing: 16,
+                            runSpacing: 16,
+                            children: metricWidgets.map((w) => SizedBox(width: 160, height: 130, child: w)).toList(),
+                          );
+                        }
+
+                        return SizedBox(
+                          height: 130,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: metricWidgets,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -406,36 +462,69 @@ class ManagerHomeScreen extends StatelessWidget {
             ),
           ),
 
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildActivityItem(
-                  icon: LucideIcons.filePlus,
-                  title: 'New Vehicle Added',
-                  subtitle: 'Toyota Land Cruiser 2024 by Admin',
-                  timeAgo: '15 mins ago',
-                  color: const Color(0xFF8B5CF6),
-                ),
-                _buildActivityItem(
-                  icon: LucideIcons.userPlus,
-                  title: 'New Customer Registered',
-                  subtitle: 'Arun Kumar from Jaffna Branch',
-                  timeAgo: '1 hour ago',
-                  color: const Color(0xFF10B981),
-                ),
-                _buildActivityItem(
-                  icon: LucideIcons.receipt,
-                  title: 'Sale Completed',
-                  subtitle: 'BMW 5 Series sold for Rs. 22M',
-                  timeAgo: '3 hours ago',
-                  color: const Color(0xFF0EA5E9),
-                ),
-              ]),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              child: ListenableBuilder(
+                listenable: Listenable.merge([
+                  InvoiceService().invoicesNotifier,
+                  VehicleService().vehiclesNotifier,
+                ]),
+                builder: (context, _) {
+                  final currentBranch = AuthService().branch;
+                  final invoices = InvoiceService().invoicesNotifier.value
+                      .where((inv) {
+                        final String userBranchLower = currentBranch.trim().toLowerCase();
+                        final String invBranchLower = inv.branch.trim().toLowerCase();
+
+                        return userBranchLower == 'all branches' 
+                            || invBranchLower == userBranchLower 
+                            || invBranchLower.isEmpty;
+                      })
+                      .toList();
+                  final vehicles = VehicleService().vehiclesNotifier.value;
+                  
+                  final List<Widget> activityItems = [];
+                  
+                  // Add latest invoices as activity
+                  for (var inv in invoices.reversed.take(3)) {
+                    activityItems.add(_buildActivityItem(
+                      icon: LucideIcons.receipt,
+                      title: 'Sale Completed',
+                      subtitle: '${inv.vehicleName} sold - ${inv.customerName}',
+                      timeAgo: inv.date.isEmpty ? 'Just now' : inv.date,
+                      color: const Color(0xFF0EA5E9),
+                    ));
+                  }
+                  
+                  // Add latest vehicles as activity
+                  for (var v in vehicles.reversed.take(2)) {
+                     activityItems.add(_buildActivityItem(
+                      icon: LucideIcons.filePlus,
+                      title: 'Vehicle Stock Update',
+                      subtitle: '${v.name} (${v.registrationNo})',
+                      timeAgo: 'Recently',
+                      color: const Color(0xFF8B5CF6),
+                    ));
+                  }
+
+                  if (activityItems.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Text('No recent activity found', style: TextStyle(color: Colors.grey)),
+                      ),
+                    );
+                  }
+
+                  return Column(children: activityItems);
+                },
+              ),
             ),
           ),
         ],
       ),
+    ),
     );
   }
 

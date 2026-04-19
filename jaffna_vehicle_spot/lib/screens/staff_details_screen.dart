@@ -71,7 +71,6 @@ class StaffDetailsScreen extends StatelessWidget {
                     title: 'Employment Details',
                     icon: LucideIcons.briefcase,
                     items: [
-                      _buildInfoRow('Applied Post', staff.applicationPost),
                       _buildInfoRow('Branch', staff.branch),
                       _buildInfoRow('Joined Date', staff.joinDate),
                       _buildInfoRow('Salary', 'Rs. ${staff.salaryAmount}'),

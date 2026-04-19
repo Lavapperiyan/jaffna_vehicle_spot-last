@@ -31,6 +31,12 @@ class _BillingScreenState extends State<BillingScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.refreshCw, size: 20, color: Color(0xFF2C3545)),
+            onPressed: () => invoiceService.fetchInvoices(),
+          ),
+        ],
         title: Row(
           children: [
             Container(
@@ -39,12 +45,7 @@ class _BillingScreenState extends State<BillingScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                  ),
-                ],
+                border: Border.all(color: const Color(0xFFF1F5F9)),
               ),
               padding: const EdgeInsets.all(2),
               child: ClipRRect(
@@ -107,49 +108,97 @@ class _BillingScreenState extends State<BillingScreen> {
             ),
           ),
           Expanded(
-            child: ValueListenableBuilder<List<Invoice>>(
-              valueListenable: invoiceService.invoicesNotifier,
-              builder: (context, invoices, child) {
-                final filteredInvoices = invoices.where((invoice) {
-                  return invoice.id.toLowerCase().contains(_searchQuery) ||
-                         invoice.customerName.toLowerCase().contains(_searchQuery);
-                }).toList();
-
-                if (filteredInvoices.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(LucideIcons.fileSearch, size: 48, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isEmpty 
-                            ? 'No invoices generated yet.' 
-                            : 'No matching invoices found.',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  await invoiceService.fetchInvoices();
+                } catch (e) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Error fetching invoices: $e'), backgroundColor: Colors.red),
                   );
                 }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                  itemCount: filteredInvoices.length,
-                  // Show latest invoices first
-                  itemBuilder: (context, index) {
-                    final invoice = filteredInvoices[filteredInvoices.length - 1 - index];
-                    return _buildInvoiceCard(context, invoice);
-                  },
-                );
               },
+              child: RepaintBoundary(
+                child: ValueListenableBuilder<List<Invoice>>(
+                  valueListenable: invoiceService.invoicesNotifier,
+                  builder: (context, invoices, child) {
+                    final authService = AuthService();
+                    final currentBranch = authService.branch;
+                    final String userRole = authService.userPost.toLowerCase();
+                    final bool isManager = userRole.contains('manager') || 
+                                         userRole.contains('admin') || 
+                                         authService.userName.toLowerCase().contains('manager');
+
+                    final filteredInvoices = invoices.where((invoice) {
+                      // 1. Branch Filtering
+                      final String userBranchLower = currentBranch.trim().toLowerCase();
+                      final String invBranchLower = invoice.branch.trim().toLowerCase();
+
+                      bool branchMatch = userBranchLower == 'all branches' 
+                          || invBranchLower == userBranchLower 
+                          || invBranchLower.isEmpty;
+
+                      if (!branchMatch) return false;
+
+                      // 2. Personal Sales Filtering (Role-based)
+                      if (!isManager) {
+                        bool userMatch = invoice.salesPersonId == authService.userId && authService.userId.isNotEmpty;
+                        if (!userMatch) return false;
+                      }
+                      
+                      // 3. Search Query Filtering
+                      final String query = _searchQuery.toLowerCase();
+                      return invoice.id.toLowerCase().contains(query) ||
+                             invoice.customerName.toLowerCase().contains(query);
+                    }).toList();
+
+                    if (filteredInvoices.isEmpty) {
+                      return ListView(
+                        children: [
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                          const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(LucideIcons.fileSearch, size: 48, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No matching invoices found.',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                      itemCount: filteredInvoices.length,
+                      itemBuilder: (context, index) {
+                        final invoice = filteredInvoices[filteredInvoices.length - 1 - index];
+                        return _InvoiceCard(invoice: invoice);
+                      },
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildInvoiceCard(BuildContext context, Invoice invoice) {
+class _InvoiceCard extends StatelessWidget {
+  final Invoice invoice;
+  const _InvoiceCard({required this.invoice});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -159,7 +208,7 @@ class _BillingScreenState extends State<BillingScreen> {
         border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.01),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -179,7 +228,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   fontSize: 14,
                 ),
               ),
-              _buildStatusBadge(invoice.status),
+              _StatusBadge(status: invoice.status),
             ],
           ),
           const SizedBox(height: 12),
@@ -208,7 +257,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'LKR ${invoice.amount}',
+                    'Rs. ${invoice.amount}',
                     style: const TextStyle(
                       color: Color(0xFF111827),
                       fontWeight: FontWeight.w900,
@@ -227,11 +276,11 @@ class _BillingScreenState extends State<BillingScreen> {
               ),
               Row(
                 children: [
-                  _buildActionButton(context, LucideIcons.eye, () async {
+                  _ActionButton(icon: LucideIcons.eye, onTap: () async {
                     await PdfHelper.viewPdf(invoice);
                   }),
                   const SizedBox(width: 8),
-                  _buildActionButton(context, LucideIcons.download, () async {
+                  _ActionButton(icon: LucideIcons.download, onTap: () async {
                     await PdfHelper.downloadPdf(invoice);
                   }),
                 ],
@@ -242,8 +291,14 @@ class _BillingScreenState extends State<BillingScreen> {
       ),
     );
   }
+}
 
-  Widget _buildStatusBadge(InvoiceStatus status) {
+class _StatusBadge extends StatelessWidget {
+  final InvoiceStatus status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
     Color bgColor;
     Color textColor;
     String label;
@@ -282,8 +337,15 @@ class _BillingScreenState extends State<BillingScreen> {
       ),
     );
   }
+}
 
-  Widget _buildActionButton(BuildContext context, IconData icon, VoidCallback onTap) {
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _ActionButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -301,4 +363,3 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 }
-

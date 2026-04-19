@@ -19,6 +19,7 @@ class Vehicle {
   final String fuelType;
   final List<String> configurations;
   final String branch;
+  final String buyPrice;
 
   // Identification Fields
   final String chassisNo;
@@ -36,6 +37,7 @@ class Vehicle {
     required this.price,
     required this.status,
     required this.imageUrl,
+    this.buyPrice = '',
     this.make = 'Unknown',
     this.model = 'Unknown',
     this.consumption = '4.2 liters',
@@ -62,12 +64,13 @@ class Vehicle {
     return Vehicle(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       name: json['name'] ?? '',
-      make: json['make'] ?? 'Unknown',
+      make: json['brand'] ?? json['make'] ?? 'Unknown',
       model: json['model'] ?? 'Unknown',
-      category: json['category'] ?? '',
-      price: json['price']?.toString() ?? '',
+      category: json['type'] ?? json['category'] ?? '',
+      price: (json['selling_price'] ?? json['price'])?.toString() ?? '',
       status: json['status'] ?? 'Available',
       imageUrl: json['image_url'] ?? json['imageUrl'] ?? json['imagePath'] ?? 'assets/toyota_chr.png',
+      buyPrice: (json['cost_price'] ?? json['buy_price'])?.toString() ?? '',
       yearOfManufacture: json['year']?.toString() ?? json['year_of_manufacture']?.toString() ?? json['yearOfManufacture']?.toString() ?? 'Not specified',
       branch: json['branch'] ?? 'Jaffna',
       chassisNo: json['chassis_no'] ?? json['chassisNo'] ?? 'Not specified',
@@ -88,10 +91,11 @@ class Vehicle {
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'make': make,
+    'brand': make,
     'model': model,
-    'category': category,
-    'price': price,
+    'type': category,
+    'selling_price': price,
+    'cost_price': buyPrice,
     'status': status,
     'image_url': imageUrl,
     'branch': branch,
@@ -106,6 +110,7 @@ class Vehicle {
     String? status,
     GarageDetails? garageDetails,
     String? price,
+    String? buyPrice,
     String? imageUrl,
   }) {
     return Vehicle(
@@ -115,6 +120,7 @@ class Vehicle {
       model: model,
       category: category,
       price: price ?? this.price,
+      buyPrice: buyPrice ?? this.buyPrice,
       status: status ?? this.status,
       imageUrl: imageUrl ?? this.imageUrl,
       consumption: consumption,
@@ -261,13 +267,28 @@ class VehicleService {
     try {
       await _supabase
           .from(ApiConfig.tableVehicles)
-          .update({'price': newPrice})
+          .update({'selling_price': newPrice})
           .eq('id', id);
 
       await fetchVehicles();
       return true;
     } catch (e) {
       debugPrint('Update price error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateVehicleStatus(String id, String status) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableVehicles)
+          .update({'status': status})
+          .eq('id', id);
+
+      await fetchVehicles();
+      return true;
+    } catch (e) {
+      debugPrint('Update status error: $e');
       return false;
     }
   }

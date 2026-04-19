@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../models/customer.dart';
+import '../models/invoice.dart';
+import '../models/auth_service.dart';
 import 'add_customer_screen.dart';
 import 'customer_details_screen.dart';
 
@@ -36,76 +38,127 @@ class _CustomersScreenState extends State<CustomersScreen> {
             fontSize: 24,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.refreshCw, color: Color(0xFF2C3545)),
+            onPressed: () => customerService.fetchCustomers(),
+          ),
+          const SizedBox(width: 8),
+        ],
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.white,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.toLowerCase();
-                  });
-                },
-                decoration: const InputDecoration(
-                  icon: Icon(LucideIcons.search, size: 20, color: Color(0xFF6B7280)),
-                  hintText: 'Search by Name or NIC...',
-                  hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-                  border: InputBorder.none,
+      body: RefreshIndicator(
+        onRefresh: () => customerService.fetchCustomers(),
+        color: const Color(0xFFE8BC44),
+        child: Column(
+          children: [
+            // Search Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: Colors.white,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    icon: Icon(LucideIcons.search, size: 20, color: Color(0xFF6B7280)),
+                    hintText: 'Search by Name or NIC...',
+                    hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                    border: InputBorder.none,
+                  ),
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: ValueListenableBuilder<List<Customer>>(
-              valueListenable: customerService.customersNotifier,
-              builder: (context, customers, child) {
-                final filteredCustomers = customers.where((customer) {
-                  return customer.name.toLowerCase().contains(_searchQuery) ||
-                         customer.nic.toLowerCase().contains(_searchQuery);
-                }).toList();
+            Expanded(
+              child: ValueListenableBuilder<List<Customer>>(
+                valueListenable: customerService.customersNotifier,
+                builder: (context, tableCustomers, child) {
+                  return ValueListenableBuilder<List<Invoice>>(
+                    valueListenable: InvoiceService().invoicesNotifier,
+                    builder: (context, invoices, _) {
+                      // 1. Create a map to ensure uniqueness by NIC (preferring table data over invoice data)
+                      final Map<String, Customer> combinedMap = {};
 
-                if (filteredCustomers.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(LucideIcons.userPlus, size: 48, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isEmpty 
-                            ? 'No customers found.' 
-                            : 'No matching customers found.',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
+                      // Add customers from invoices first (as secondary source)
+                      for (var inv in invoices) {
+                        final key = inv.customerNic.isNotEmpty ? inv.customerNic : inv.customerName.toLowerCase();
+                        if (key.isNotEmpty) {
+                          combinedMap[key] = Customer(
+                            id: 'INV-${inv.id.substring(0, 4)}',
+                            name: inv.customerName,
+                            nic: inv.customerNic,
+                            phone: inv.customerContact,
+                            address: inv.customerAddress,
+                            email: '',
+                            purchasedVehicles: [inv.vehicleName],
+                            joinDate: inv.date,
+                            branch: AuthService().branch,
+                          );
+                        }
+                      }
+
+                      // Overwrite with formal customer table data (primary source)
+                      for (var cust in tableCustomers) {
+                        final key = cust.nic.isNotEmpty ? cust.nic : cust.name.toLowerCase();
+                        combinedMap[key] = cust;
+                      }
+
+                      final allCustomers = combinedMap.values.toList();
+
+                      // 2. Apply filtering
+                      final filteredCustomers = allCustomers.where((customer) {
+                        return customer.name.toLowerCase().contains(_searchQuery) ||
+                               customer.nic.toLowerCase().contains(_searchQuery);
+                      }).toList();
+  
+                      if (filteredCustomers.isEmpty) {
+                        return ListView( 
+                          children: [
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(LucideIcons.userPlus, size: 48, color: Colors.grey),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _searchQuery.isEmpty 
+                                      ? 'No customers found.' 
+                                      : 'No matching customers found.',
+                                    style: const TextStyle(color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                        itemCount: filteredCustomers.length,
+                        itemBuilder: (context, index) {
+                          final customer = filteredCustomers[index];
+                          return _buildCustomerCard(context, customer);
+                        },
+                      );
+                    },
                   );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                  itemCount: filteredCustomers.length,
-                  itemBuilder: (context, index) {
-                    final customer = filteredCustomers[index];
-                    return _buildCustomerCard(context, customer);
-                  },
-                );
-              },
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

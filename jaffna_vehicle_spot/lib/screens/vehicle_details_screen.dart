@@ -47,14 +47,22 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
               child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final newPrice = controller.text.trim();
                 if (newPrice.isNotEmpty) {
-                  VehicleService().updateVehiclePrice(widget.vehicle.id, newPrice);
-                  setState(() {
-                    _currentPrice = newPrice;
-                  });
-                  Navigator.pop(context);
+                  final success = await VehicleService().updateVehiclePrice(widget.vehicle.id, newPrice);
+                  if (success) {
+                    setState(() {
+                      _currentPrice = newPrice;
+                    });
+                    if (context.mounted) Navigator.pop(context);
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Failed to update price.')),
+                      );
+                    }
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2C3545)),
@@ -141,12 +149,9 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                     ),
                   ),
                   InteractiveViewer(
-                    child: Image.asset(
-                      widget.vehicle.imagePath,
-                      width: double.infinity,
-                      height: 220,
-                      fit: BoxFit.contain,
-                    ),
+                    child: widget.vehicle.imageUrl.startsWith('http')
+                        ? Image.network(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity, height: 220)
+                        : Image.asset(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity, height: 220),
                   ),
                   // Small red indicator dot from design
                   Positioned(
@@ -356,29 +361,30 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => InvoiceGenerationScreen(vehicle: widget.vehicle),
+                if (widget.vehicle.status != 'Sold')
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => InvoiceGenerationScreen(vehicle: widget.vehicle),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C3545),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                    },
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2C3545),
-                        borderRadius: BorderRadius.circular(12),
+                        alignment: Alignment.center,
+                        child: const Text('Billing',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
-                      alignment: Alignment.center,
-                      child: const Text('Billing',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                if (widget.vehicle.status != 'Sold') const SizedBox(width: 8),
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -396,13 +402,21 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                                 child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
                               ),
                               ElevatedButton(
-                                onPressed: () {
-                                  VehicleService().returnFromGarage(widget.vehicle.id);
-                                  Navigator.pop(context);
-                                  Navigator.pop(context); // Go back to inventory
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Vehicle returned to showroom!')),
-                                  );
+                                onPressed: () async {
+                                  final success = await VehicleService().returnFromGarage(widget.vehicle.id);
+                                  if (context.mounted) {
+                                    if (success) {
+                                      Navigator.pop(context);
+                                      Navigator.pop(context); // Go back to inventory
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Vehicle returned to showroom!')),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Failed to return vehicle.')),
+                                      );
+                                    }
+                                  }
                                 },
                                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF76FF03)),
                                 child: const Text('Confirm', style: TextStyle(color: Colors.black)),

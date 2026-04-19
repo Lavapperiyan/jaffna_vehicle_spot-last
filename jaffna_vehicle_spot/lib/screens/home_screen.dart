@@ -3,6 +3,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../models/auth_service.dart';
 import '../models/vehicle.dart';
 import '../models/staff.dart';
+import '../models/invoice.dart';
+import '../models/customer.dart';
 import 'settings_screen.dart';
 import 'customers_screen.dart';
 import 'staff_screen.dart';
@@ -12,7 +14,6 @@ import 'garage_vehicles_screen.dart';
 import 'commission_reports_screen.dart';
 import 'staff_attendance_screen.dart';
 import 'branch_management_screen.dart';
-
 
 const Color kBrandDark = Color(0xFF2C3545);
 const Color kBrandGold = Color(0xFFE8BC44);
@@ -136,150 +137,36 @@ class HomeScreen extends StatelessWidget {
                         color: Colors.white,
                         onSelected: (value) {
                           if (value == 'settings') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
                           } else if (value == 'customers') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const CustomersScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const CustomersScreen()));
                           } else if (value == 'staff') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const StaffScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffScreen()));
                           } else if (value == 'reports') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ReportsScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportsScreen()));
                           } else if (value == 'garage') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const GarageVehiclesScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const GarageVehiclesScreen()));
                           } else if (value == 'commissions') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const CommissionReportsScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const CommissionReportsScreen()));
                           } else if (value == 'attendance') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const StaffAttendanceScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffAttendanceScreen()));
                           } else if (value == 'branch_management') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const BranchManagementScreen()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const BranchManagementScreen()));
                           } else if (value == 'logout') {
                             AuthService().logout();
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
-                              (route) => false,
-                            );
+                            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
                           }
                         },
                         itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'settings',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.settings, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Settings', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'customers',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.users, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Customers', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'staff',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.userCheck, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Staffs', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'reports',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.barChart3, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Reports', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'garage',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.warehouse, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Vehicles in Garage', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'commissions',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.percent, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Commission Reports', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'attendance',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.calendarCheck, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Staff Attendance', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'branch_management',
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.building, color: kBrandDark, size: 20),
-                                const SizedBox(width: 12),
-                                const Text('Branch Management', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
-                              ],
-                            ),
-                          ),
+                          const PopupMenuItem(value: 'settings', child: _MenuRow(icon: LucideIcons.settings, label: 'Settings')),
+                          const PopupMenuItem(value: 'customers', child: _MenuRow(icon: LucideIcons.users, label: 'Customers')),
+                          const PopupMenuItem(value: 'staff', child: _MenuRow(icon: LucideIcons.userCheck, label: 'Staffs')),
+                          const PopupMenuItem(value: 'reports', child: _MenuRow(icon: LucideIcons.barChart3, label: 'Reports')),
+                          const PopupMenuItem(value: 'garage', child: _MenuRow(icon: LucideIcons.warehouse, label: 'Vehicles in Garage')),
+                          const PopupMenuItem(value: 'commissions', child: _MenuRow(icon: LucideIcons.percent, label: 'Commission Reports')),
+                          const PopupMenuItem(value: 'attendance', child: _MenuRow(icon: LucideIcons.calendarCheck, label: 'Staff Attendance')),
+                          const PopupMenuItem(value: 'branch_management', child: _MenuRow(icon: LucideIcons.building, label: 'Branch Management')),
                         ],
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(LucideIcons.logOut, color: Colors.white70, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          AuthService().logout();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
-                            (route) => false,
-                          );
-                        },
                       ),
                     ],
                   ),
@@ -297,42 +184,15 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Quick Operations',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
+                  const Text('Quick Operations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildQuickAction(
-                        icon: LucideIcons.car,
-                        label: 'Inventory',
-                        color: kBrandDark,
-                        onTap: () => onTabChange?.call(1),
-                      ),
-                      _buildQuickAction(
-                        icon: LucideIcons.fileText,
-                        label: 'Billing',
-                        color: const Color(0xFF0EA5E9),
-                        onTap: () => onTabChange?.call(2),
-                      ),
-                      _buildQuickAction(
-                        icon: LucideIcons.users,
-                        label: 'Staffs',
-                        color: kBrandGold,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffScreen())),
-                      ),
-                      _buildQuickAction(
-                        icon: LucideIcons.barChart3,
-                        label: 'Reports',
-                        color: const Color(0xFF10B981),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportsScreen())),
-                      ),
+                      _QuickAction(icon: LucideIcons.car, label: 'Inventory', color: kBrandDark, onTap: () => onTabChange?.call(1)),
+                      _QuickAction(icon: LucideIcons.fileText, label: 'Billing', color: const Color(0xFF0EA5E9), onTap: () => onTabChange?.call(2)),
+                      _QuickAction(icon: LucideIcons.users, label: 'Staffs', color: kBrandGold, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffScreen()))),
+                      _QuickAction(icon: LucideIcons.barChart3, label: 'Reports', color: const Color(0xFF10B981), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportsScreen()))),
                     ],
                   ),
                 ],
@@ -342,64 +202,119 @@ class HomeScreen extends StatelessWidget {
           
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
 
-          // 3. Key Metrics
+          // 3. Key Metrics (Live Database Data)
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
-                    'Business Overview',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
+                  child: Text('Business Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  height: 130, // Increased height for better padding
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      ValueListenableBuilder<List<Vehicle>>(
-                        valueListenable: VehicleService().vehiclesNotifier,
-                        builder: (context, vehicles, _) => _buildCompactMetric(
-                          icon: LucideIcons.car,
-                          color: kBrandDark,
-                          label: 'Total Vehicles',
-                          value: '${vehicles.length}',
-                          trend: '+12%',
-                        ),
-                      ),
-                      _buildCompactMetric(
-                        icon: LucideIcons.trendingUp,
-                        color: const Color(0xFF10B981),
-                        label: 'Revenue (MTD)',
-                        value: '35.2M',
-                        trend: '+18%',
-                      ),
-                      ValueListenableBuilder<List<Staff>>(
-                        valueListenable: StaffService().staffsNotifier,
-                        builder: (context, staffs, _) => _buildCompactMetric(
-                          icon: LucideIcons.users,
-                          color: kBrandGold,
-                          label: 'Active Staff',
-                          value: '${staffs.length}',
-                          trend: 'Now',
-                        ),
-                      ),
-                      _buildCompactMetric(
-                        icon: LucideIcons.userCheck,
-                        color: const Color(0xFF8B5CF6),
-                        label: 'Customers',
-                        value: '356',
-                        trend: '+8%',
-                      ),
-                    ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: RepaintBoundary(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth > 600;
+                        
+                        final metricWidgets = [
+                          // TOTAL VEHICLES
+                          ValueListenableBuilder<List<Vehicle>>(
+                            valueListenable: VehicleService().vehiclesNotifier,
+                            builder: (context, vehicles, _) => _MetricCard(
+                              icon: LucideIcons.car, 
+                              color: kBrandDark, 
+                              label: 'Total Vehicles', 
+                              value: vehicles.length.toString(), 
+                              trend: 'Now'
+                            ),
+                          ),
+                          // TOTAL REVENUE (Across all time to match analytics)
+                          ValueListenableBuilder<List<Invoice>>(
+                            valueListenable: InvoiceService().invoicesNotifier,
+                            builder: (context, invoices, _) {
+                              double total = 0;
+                              for (var inv in invoices) {
+                                total += double.tryParse(inv.amount.replaceAll(',', '')) ?? 0;
+                              }
+                              String valStr = total >= 1000000 
+                                  ? '${(total / 1000000).toStringAsFixed(1)}M'
+                                  : (total >= 1000 ? '${(total / 1000).toStringAsFixed(1)}K' : total.toStringAsFixed(0));
+                              
+                              return _MetricCard(
+                                icon: LucideIcons.trendingUp, 
+                                color: const Color(0xFF10B981), 
+                                label: 'Total Revenue', 
+                                value: 'Rs. $valStr', 
+                                trend: 'Total'
+                              );
+                            },
+                          ),
+                          // VEHICLES SOLD
+                          ValueListenableBuilder<List<Invoice>>(
+                            valueListenable: InvoiceService().invoicesNotifier,
+                            builder: (context, invoices, _) => _MetricCard(
+                              icon: LucideIcons.shoppingCart, 
+                              color: const Color(0xFF0EA5E9), 
+                              label: 'Vehicles Sold', 
+                              value: invoices.length.toString(), 
+                              trend: 'Sold'
+                            ),
+                          ),
+                          // ACTIVE STAFF
+                          ValueListenableBuilder<List<Staff>>(
+                            valueListenable: StaffService().staffsNotifier,
+                            builder: (context, staffs, _) => _MetricCard(
+                              icon: LucideIcons.users, 
+                              color: kBrandGold, 
+                              label: 'Active Staff', 
+                              value: staffs.length.toString(), 
+                              trend: 'Active'
+                            ),
+                          ),
+                          // CUSTOMERS (Combined count)
+                          ValueListenableBuilder<List<Customer>>(
+                            valueListenable: CustomerService().customersNotifier,
+                            builder: (context, customers, _) {
+                              return ValueListenableBuilder<List<Invoice>>(
+                                valueListenable: InvoiceService().invoicesNotifier,
+                                builder: (context, invoices, _) {
+                                  final uniqueInvoicedCustomers = invoices.map((i) => i.customerName.toLowerCase()).toSet();
+                                  final uniqueTableCustomers = customers.map((c) => c.name.toLowerCase()).toSet();
+                                  final allUniqueCustomers = {...uniqueInvoicedCustomers, ...uniqueTableCustomers};
+                                  
+                                  return _MetricCard(
+                                    icon: LucideIcons.userCheck, 
+                                    color: const Color(0xFF8B5CF6), 
+                                    label: 'Customers', 
+                                    value: allUniqueCustomers.length.toString(), 
+                                    trend: 'Total'
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ];
+
+                        if (isWide) {
+                          return Wrap(
+                            spacing: 16,
+                            runSpacing: 16,
+                            children: metricWidgets.map((w) => SizedBox(width: 160, height: 130, child: w)).toList(),
+                          );
+                        }
+
+                        return SizedBox(
+                          height: 130,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: metricWidgets,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -410,28 +325,15 @@ class HomeScreen extends StatelessWidget {
 
           // 4. Recent Sales
           SliverToBoxAdapter(
-            child: Container(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Recent Transactions',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
+                  const Text('Recent Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
                   TextButton(
                     onPressed: () => onTabChange?.call(3),
-                    style: TextButton.styleFrom(
-                      foregroundColor: kBrandGold,
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(50, 30),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('View All', style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: const Text('View All', style: TextStyle(fontWeight: FontWeight.w700, color: kBrandGold)),
                   ),
                 ],
               ),
@@ -440,41 +342,84 @@ class HomeScreen extends StatelessWidget {
 
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildStreamlinedSale(
-                  customer: 'Nimal Silva',
-                  vehicle: '2024 BMW M5',
-                  amount: 'Rs. 24.5M',
-                  timeAgo: '2 hours ago',
-                ),
-                _buildStreamlinedSale(
-                  customer: 'Priya Fernando',
-                  vehicle: 'Mercedes S-Class',
-                  amount: 'Rs. 28.0M',
-                  timeAgo: 'Yesterday',
-                ),
-                _buildStreamlinedSale(
-                  customer: 'Kumar Perera',
-                  vehicle: '2024 Audi Q7',
-                  amount: 'Rs. 19.5M',
-                  timeAgo: '2 days ago',
-                ),
-              ]),
+            sliver: ValueListenableBuilder<List<Invoice>>(
+              valueListenable: InvoiceService().invoicesNotifier,
+              builder: (context, invoices, _) {
+                if (invoices.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(LucideIcons.receipt, color: Color(0xFFCBD5E1), size: 48),
+                          SizedBox(height: 12),
+                          Text(
+                            'No Transactions Found',
+                            style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Your recent sales will appear here.',
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                final recentInvoices = invoices.take(5).toList();
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final invoice = recentInvoices[index];
+                      return _StreamlinedSaleTile(
+                        customer: invoice.customerName, 
+                        vehicle: invoice.vehicleName, 
+                        amount: 'Rs. ${invoice.amount}', 
+                        timeAgo: invoice.date
+                      );
+                    },
+                    childCount: recentInvoices.length,
+                  ),
+                );
+              },
             ),
           ),
         ],
       ),
     );
   }
+}
 
+class _MenuRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _MenuRow({required this.icon, required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: kBrandDark, size: 20),
+        const SizedBox(width: 12),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
+      ],
+    );
+  }
+}
 
-  Widget _buildQuickAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _QuickAction({required this.icon, required this.label, required this.color, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -490,26 +435,22 @@ class HomeScreen extends StatelessWidget {
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF475569),
-            ),
-          ),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
         ],
       ),
     );
   }
+}
 
-  Widget _buildCompactMetric({
-    required IconData icon,
-    required Color color,
-    required String label,
-    required String value,
-    required String trend,
-  }) {
+class _MetricCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final String trend;
+  const _MetricCard({required this.icon, required this.color, required this.label, required this.value, required this.trend});
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: 150,
       margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -517,13 +458,9 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
         boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
+          BoxShadow(color: color.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -535,86 +472,56 @@ class HomeScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                 child: Icon(icon, color: color, size: 18),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: trend.contains('+') || trend == 'Now' 
-                      ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                      : color.withValues(alpha: 0.1),
+                  color: trend.contains('+') || trend == 'Now' || trend == 'Active' ? const Color(0xFF10B981).withValues(alpha: 0.1) : color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  trend,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: trend.contains('+') || trend == 'Now' 
-                        ? const Color(0xFF059669) 
-                        : color,
-                  ),
-                ),
+                child: Text(trend, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: trend.contains('+') || trend == 'Now' || trend == 'Active' ? const Color(0xFF059669) : color)),
               ),
             ],
           ),
           const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF0F172A),
-              letterSpacing: -1,
-            ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -1)),
           ),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStreamlinedSale({
-    required String customer,
-    required String vehicle,
-    required String amount,
-    required String timeAgo,
-  }) {
+class _StreamlinedSaleTile extends StatelessWidget {
+  final String customer;
+  final String vehicle;
+  final String amount;
+  final String timeAgo;
+  const _StreamlinedSaleTile({required this.customer, required this.vehicle, required this.amount, required this.timeAgo});
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20), // More rounded
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: kBrandDark.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(14),
-            ),
+            decoration: BoxDecoration(color: kBrandDark.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14)),
             child: const Icon(LucideIcons.receipt, color: kBrandDark, size: 20),
           ),
           const SizedBox(width: 14),
@@ -622,36 +529,13 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  customer,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
+                Text(customer, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF1E293B))),
                 const SizedBox(height: 2),
-                Text(
-                  '$vehicle • $timeAgo',
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text('$vehicle • $timeAgo', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
-          Text(
-            amount,
-            style: const TextStyle(
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-            ),
-          ),
+          Text(amount, style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w900, fontSize: 15)),
         ],
       ),
     );

@@ -25,9 +25,7 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
     text: DateTime.now().toString().split(' ')[0],
   );
   final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _taxController = TextEditingController();
   final TextEditingController _totalController = TextEditingController();
-  final TextEditingController _leaseController = TextEditingController();
   
   Commission? _pendingCommission;
 
@@ -37,10 +35,14 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
   void initState() {
     super.initState();
     _amountController.text = widget.vehicle.price;
-    // Mock tax and total for now, can be adjusted manually
-    _taxController.text = '7,789.70';
-    _totalController.text = '786,759.70';
-    _leaseController.text = '0';
+    _totalController.text = widget.vehicle.price;
+
+    // Update total automatically when subtotal changes
+    _amountController.addListener(() {
+      if (_totalController.text != _amountController.text) {
+        _totalController.text = _amountController.text;
+      }
+    });
   }
 
   @override
@@ -51,9 +53,7 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
     _nicController.dispose();
     _dateController.dispose();
     _amountController.dispose();
-    _taxController.dispose();
     _totalController.dispose();
-    _leaseController.dispose();
     super.dispose();
   }
 
@@ -67,7 +67,7 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
 
     // Create Invoice object
     final newInvoice = Invoice(
-      id: 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      id: '', // Supabase will generate UUID
       customerName: _nameController.text,
       customerAddress: _addressController.text,
       customerContact: _contactController.text,
@@ -81,11 +81,12 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
       color: widget.vehicle.color,
       year: widget.vehicle.yearOfManufacture,
       amount: _totalController.text,
-      leaseAmount: _leaseController.text,
+      leaseAmount: '0',
       date: _dateController.text,
       status: InvoiceStatus.paid,
       salesPersonId: AuthService().userId,
       commissionId: _pendingCommission?.id,
+      branch: AuthService().branch,
     );
 
     // Save commission if exists
@@ -94,11 +95,14 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
     }
 
     // Save to global list
-    _invoiceService.addInvoice(newInvoice);
+    await _invoiceService.addInvoice(newInvoice);
+    
+    // Mark vehicle as Sold
+    await VehicleService().updateVehicleStatus(widget.vehicle.id, 'Sold');
 
     // Automatically update/add customer to customer management
     final customer = Customer(
-      id: 'CUS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      id: '', // Supabase will generate UUID
       name: _nameController.text,
       nic: _nicController.text,
       phone: _contactController.text,
@@ -106,6 +110,7 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
       email: '', // Email not captured in this form
       purchasedVehicles: [widget.vehicle.name],
       joinDate: _dateController.text,
+      branch: AuthService().branch,
     );
     CustomerService().addOrUpdateCustomer(customer);
 
@@ -190,7 +195,9 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
                         color: const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Image.asset(widget.vehicle.imagePath, fit: BoxFit.contain),
+                      child: widget.vehicle.imageUrl.startsWith('http')
+                          ? Image.network(widget.vehicle.imageUrl, width: 60, height: 40, fit: BoxFit.cover)
+                          : Image.asset(widget.vehicle.imageUrl, width: 60, height: 40, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -233,8 +240,6 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
               ),
               const SizedBox(height: 16),
               _buildEditableBillingRow('Subtotal', _amountController),
-              _buildEditableBillingRow('Tax', _taxController),
-              _buildEditableBillingRow('Lease Amount', _leaseController),
               const Divider(height: 32),
               _buildEditableBillingRow('Total Amount', _totalController, isTotal: true),
 

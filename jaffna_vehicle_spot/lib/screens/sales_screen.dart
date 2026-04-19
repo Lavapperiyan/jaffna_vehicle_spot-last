@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/invoice.dart';
 import '../models/auth_service.dart';
 
-class SalesScreen extends StatelessWidget {
+class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
+
+  @override
+  State<SalesScreen> createState() => _SalesScreenState();
+}
+
+class _SalesScreenState extends State<SalesScreen> {
+  bool _showFixButton = false;
 
   @override
   Widget build(BuildContext context) {
@@ -23,23 +31,100 @@ class SalesScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          IconButton(
+            onPressed: () => setState(() => _showFixButton = !_showFixButton),
+            icon: Icon(
+              _showFixButton ? LucideIcons.eyeOff : LucideIcons.eye,
+              size: 20,
+              color: Colors.grey.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
       ),
       body: ValueListenableBuilder<List<Invoice>>(
         valueListenable: InvoiceService().invoicesNotifier,
         builder: (context, allInvoices, _) {
           final authService = AuthService();
-          final isStaff = authService.userPost.startsWith('Staff');
-          
-          // Filter invoices if the user is staff
-          final invoices = isStaff 
-              ? allInvoices.where((inv) => inv.salesPersonId == authService.userId).toList()
-              : allInvoices;
+          final currentBranch = authService.branch;
+          final invoices = allInvoices.where((inv) {
+            final String userBranchLower = currentBranch.trim().toLowerCase();
+            final String invBranchLower = inv.branch.trim().toLowerCase();
+
+            bool branchMatch = userBranchLower == 'all_branches' || 
+                userBranchLower == 'all branches' ||
+                invBranchLower == userBranchLower || 
+                invBranchLower.isEmpty;
+
+            // Strict personal sales filtering for the logged-in user
+            bool userMatch = inv.salesPersonId == authService.userId && authService.userId.isNotEmpty;
+            
+            return branchMatch && userMatch;
+          }).toList();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_showFixButton) ...[
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final uid = authService.userId;
+                        if (uid.isEmpty) return;
+                        
+                        final messenger = ScaffoldMessenger.of(context);
+                        final supabase = Supabase.instance.client;
+                        
+                        try {
+                          // 1. Fetch ALL invoices and filter in Dart for absolute compatibility
+                          final allResponse = await supabase
+                              .from('invoices')
+                              .select('id, customer_name');
+                          
+                          final List<dynamic> allData = allResponse as List;
+                          final List<String> targets = ['Nimal Silva', 'Priya Fernando', 'Kumar Perera'];
+                          
+                          final List<dynamic> targetInvoices = allData.where((inv) {
+                            final String name = (inv['customer_name'] ?? '').toString();
+                            return targets.contains(name);
+                          }).toList();
+                          
+                          if (targetInvoices.isEmpty) {
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text('No matching records found to fix!')),
+                            );
+                            return;
+                          }
+
+                          // 2. Update each of them
+                          int updatedCount = 0;
+                          for (var inv in targetInvoices) {
+                            final success = await InvoiceService().updateInvoiceSalesPerson(inv['id'], uid);
+                            if (success) updatedCount++;
+                          }
+                          
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Succesfully claimed $updatedCount vehicle(s) for your analytics!')),
+                          );
+                        } catch (e) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Error fixing data: $e')),
+                          );
+                        }
+                      },
+                      icon: const Icon(LucideIcons.hammer, size: 14),
+                      label: const Text('FIX MY DATA: Claim INV-001, 002, 003', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue[900],
+                        side: BorderSide(color: Colors.blue[900]!),
+                      ),
+                    ),
+                  ),
+                ],
                 _buildSummaryGrid(invoices),
                 const SizedBox(height: 24),
                 _buildChartSection('Sales Trend (Volume)', _buildBarChart(invoices)),
@@ -61,11 +146,19 @@ class SalesScreen extends StatelessWidget {
   }
 
   Widget _buildSummaryGrid(List<Invoice> invoices) {
-    // Basic calculation for mock data "24.5M" style strings
     double totalRevenue = 0;
     for (var inv in invoices) {
-      double val = double.tryParse(inv.amount.replaceAll('M', '').replaceAll('Rs. ', '').replaceAll(',', '')) ?? 0;
-      if (inv.amount.contains('M')) val *= 1000000;
+      // Robust double parsing: remove currency symbols, letters, and commas
+      String cleanedAmount = inv.amount.replaceAll(RegExp(r'[^0-9.]'), '');
+      double val = double.tryParse(cleanedAmount) ?? 0;
+      
+      // Handle M and K suffixes specifically if they exist in the original string
+      if (inv.amount.toUpperCase().contains('M')) {
+        val *= 1000000;
+      } else if (inv.amount.toUpperCase().contains('K')) {
+        val *= 1000;
+      }
+      
       totalRevenue += val;
     }
 
@@ -144,41 +237,87 @@ class SalesScreen extends StatelessWidget {
       return const Center(child: Text('No data available', style: TextStyle(color: Colors.grey)));
     }
 
-    final Map<int, int> monthlyCounts = {};
-    for (var inv in invoices) {
-      final date = DateTime.tryParse(inv.date);
-      if (date != null) {
-        monthlyCounts[date.month] = (monthlyCounts[date.month] ?? 0) + 1;
+    // Pivot the chart on the LATEST invoice date instead of strictly DateTime.now()
+    // This handles scenarios where the user is looking at historical data (e.g., 2024 invoices)
+    DateTime pivotDate = DateTime.now();
+    
+    if (invoices.isNotEmpty) {
+      DateTime latestInvoiceDate = DateTime(1900);
+      bool foundValidDate = false;
+      
+      for (var inv in invoices) {
+        final d = DateTime.tryParse(inv.date);
+        if (d != null) {
+          foundValidDate = true;
+          if (d.isAfter(latestInvoiceDate)) {
+            latestInvoiceDate = d;
+          }
+        }
+      }
+      
+      // If the latest invoice is in the past compared to NOW, pivot to it
+      // so the chart isn't empty.
+      if (foundValidDate && latestInvoiceDate.isBefore(DateTime.now())) {
+        pivotDate = latestInvoiceDate;
       }
     }
 
-    // Get last 6 months list
-    final List<int> displayMonths = [];
-    final currentMonth = DateTime.now().month;
-    for (int i = 5; i >= 0; i--) {
-      int m = currentMonth - i;
-      if (m <= 0) m += 12;
-      displayMonths.add(m);
+    final Map<int, int> monthlyCounts = {};
+    
+    // Get 6 months start date relative to pivotDate
+    final sixMonthsAgo = DateTime(pivotDate.year, pivotDate.month - 5, 1);
+
+    for (var inv in invoices) {
+      // Try multiple parsing strategies for the date
+      DateTime? date;
+      if (inv.date.isNotEmpty) {
+        date = DateTime.tryParse(inv.date);
+        if (date == null && inv.date.contains('/')) {
+          // Handle DD/MM/YYYY or MM/DD/YYYY if found
+          final parts = inv.date.split('/');
+          if (parts.length == 3) {
+            date = DateTime.tryParse('${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}');
+          }
+        }
+      }
+
+      if (date != null && date.isAfter(sixMonthsAgo.subtract(const Duration(seconds: 1)))) {
+        final monthsDiff = ((date.year - sixMonthsAgo.year) * 12) + (date.month - sixMonthsAgo.month);
+        if (monthsDiff >= 0 && monthsDiff < 6) {
+          monthlyCounts[monthsDiff] = (monthlyCounts[monthsDiff] ?? 0) + 1;
+        }
+      }
+    }
+
+    // Prepare month labels for display
+    final List<String> monthLabels = [];
+    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    for (int i = 0; i < 6; i++) {
+      final d = DateTime(sixMonthsAgo.year, sixMonthsAgo.month + i, 1);
+      monthLabels.add(monthNames[d.month - 1]);
     }
 
     final double maxVal = monthlyCounts.values.isEmpty 
         ? 5 
         : (monthlyCounts.values.reduce((a, b) => a > b ? a : b).toDouble() + 1);
 
+    // If maxVal is 1 (e.g. only 1 sale), make it at least 2 for better scaling
+    final displayMax = maxVal < 2 ? 4.0 : maxVal;
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: maxVal,
-        barTouchData: BarTouchData(enabled: false),
+        maxY: displayMax,
+        barTouchData: BarTouchData(enabled: true),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                final monthIdx = displayMonths[value.toInt() % displayMonths.length];
-                return Text(monthNames[monthIdx], style: const TextStyle(color: Color(0xFF6B7280), fontSize: 10));
+                final idx = value.toInt();
+                if (idx < 0 || idx >= monthLabels.length) return const SizedBox();
+                return Text(monthLabels[idx], style: const TextStyle(color: Color(0xFF6B7280), fontSize: 10));
               },
             ),
           ),
@@ -188,9 +327,8 @@ class SalesScreen extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         gridData: const FlGridData(show: false),
-        barGroups: List.generate(displayMonths.length, (index) {
-          final month = displayMonths[index];
-          final count = (monthlyCounts[month] ?? 0).toDouble();
+        barGroups: List.generate(monthLabels.length, (index) {
+          final count = (monthlyCounts[index] ?? 0).toDouble();
           return _generateGroup(index, count);
         }),
       ),
@@ -218,7 +356,9 @@ class SalesScreen extends StatelessWidget {
 
     final Map<String, int> categories = {};
     for (var inv in invoices) {
-      categories[inv.vehicleType] = (categories[inv.vehicleType] ?? 0) + 1;
+      String cat = inv.vehicleType.trim();
+      if (cat.isEmpty) cat = 'Other';
+      categories[cat] = (categories[cat] ?? 0) + 1;
     }
 
     final List<Color> colors = [
@@ -252,8 +392,8 @@ class SalesScreen extends StatelessWidget {
 
     return PieChart(
       PieChartData(
-        sectionsSpace: 2,
-        centerSpaceRadius: 40,
+        sectionsSpace: 4,
+        centerSpaceRadius: 45,
         sections: sections,
       ),
     );

@@ -60,7 +60,7 @@ class _GarageFormScreenState extends State<GarageFormScreen> {
                 ),
                 child: Row(
                   children: [
-                    Image.asset(widget.vehicle.imagePath, width: 60, height: 60, fit: BoxFit.contain),
+                    Image.network(widget.vehicle.imageUrl, width: 60, height: 60, fit: BoxFit.contain),
                     const SizedBox(width: 16),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +112,12 @@ class _GarageFormScreenState extends State<GarageFormScreen> {
                     foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('Save & Move to Garage', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: _isLoading 
+                    ? const SizedBox(
+                        height: 24, 
+                        width: 24, 
+                        child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3))
+                    : const Text('Save & Move to Garage', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 20),
@@ -188,8 +193,10 @@ class _GarageFormScreenState extends State<GarageFormScreen> {
     );
   }
 
-  void _saveEntry() {
+  void _saveEntry() async {
     if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+      
       final details = GarageDetails(
         garageName: _garageNameController.text,
         ownerName: _ownerNameController.text,
@@ -203,14 +210,25 @@ class _GarageFormScreenState extends State<GarageFormScreen> {
         advanceAmount: double.tryParse(_advanceAmountController.text) ?? 0,
       );
 
-      VehicleService().moveToGarage(widget.vehicle.id, details);
+      final success = await VehicleService().moveToGarage(widget.vehicle.id, details);
       
-      Navigator.pop(context);
-      Navigator.pop(context); // Go back from Details too to refresh stock list
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${widget.vehicle.name} moved to Garage!')),
-      );
+      if (mounted) {
+        if (success) {
+          Navigator.pop(context);
+          Navigator.pop(context); // Go back from Details too to refresh stock list
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${widget.vehicle.name} moved to Garage!')),
+          );
+        } else {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to move vehicle to garage. Please try again.')),
+          );
+        }
+      }
     }
   }
+
+  bool _isLoading = false;
 }

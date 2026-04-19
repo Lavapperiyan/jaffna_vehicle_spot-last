@@ -55,7 +55,6 @@ class GarageVehiclesScreen extends StatelessWidget {
 
   Widget _buildGarageCard(BuildContext context, Vehicle vehicle) {
     final details = vehicle.garageDetails;
-    if (details == null) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -86,7 +85,9 @@ class GarageVehiclesScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.all(8),
-                    child: Image.asset(vehicle.imagePath, fit: BoxFit.contain),
+                    child: vehicle.imageUrl.startsWith('http')
+                        ? Image.network(vehicle.imageUrl, width: 60, height: 40, fit: BoxFit.cover)
+                        : Image.asset(vehicle.imageUrl, width: 60, height: 40, fit: BoxFit.cover),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -103,7 +104,7 @@ class GarageVehiclesScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            details.garageName,
+                            details?.garageName ?? 'Direct Work',
                             style: const TextStyle(color: Color(0xFFE8BC44), fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -118,13 +119,13 @@ class GarageVehiclesScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _infoRow(LucideIcons.calendar, 'Sent Date', details.date),
+                  _infoRow(LucideIcons.calendar, 'Sent Date', details?.date ?? 'N/A'),
                   const SizedBox(height: 12),
-                  _infoRow(LucideIcons.wrench, 'Reason', details.reason),
+                  _infoRow(LucideIcons.wrench, 'Reason', details?.reason ?? 'Maintenance'),
                   const SizedBox(height: 12),
-                  _infoRow(LucideIcons.banknote, 'Total Cost', 'Rs. ${details.totalAmount}'),
+                  _infoRow(LucideIcons.banknote, 'Total Cost', details != null ? 'Rs. ${details.totalAmount}' : 'Pending'),
                   const SizedBox(height: 12),
-                  _infoRow(LucideIcons.userCheck, 'Driver', details.driverName),
+                  _infoRow(LucideIcons.userCheck, 'Driver', details?.driverName ?? 'Assigned'),
                 ],
               ),
             ),

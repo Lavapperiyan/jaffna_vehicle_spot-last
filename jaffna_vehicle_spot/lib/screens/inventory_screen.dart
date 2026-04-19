@@ -38,6 +38,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
             final matchesSearch = v.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                                  v.make.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                                  v.model.toLowerCase().contains(_searchQuery.toLowerCase());
+            
+            // 24-hour auto-hide for Sold vehicles
+            if (v.status == 'Sold' && v.stockUpdateDate.isNotEmpty) {
+              try {
+                final soldAt = DateTime.parse(v.stockUpdateDate);
+                final now = DateTime.now();
+                if (now.difference(soldAt).inHours >= 24) {
+                  return false;
+                }
+              } catch (e) {
+                debugPrint('Date parsing error for vehicle ${v.id}: $e');
+              }
+            }
+
             return matchesCategory && matchesSearch;
           }).toList();
 
@@ -257,10 +271,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Hero(
-                    tag: 'car-img-${vehicle.id}',
-                    child: vehicle.imagePath.startsWith('assets') 
-                      ? Image.asset(vehicle.imagePath, fit: BoxFit.contain)
-                      : const Icon(LucideIcons.car, size: 40, color: Color(0xFF2C3545)),
+                    tag: 'vehicle-${vehicle.id}',
+                    child: vehicle.imageUrl.startsWith('http')
+                        ? Image.network(vehicle.imageUrl, fit: BoxFit.cover)
+                        : Image.asset(vehicle.imageUrl, fit: BoxFit.cover),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -301,6 +315,40 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 20),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Vehicle'),
+                                  content: Text('Are you sure you want to delete ${vehicle.name}? This action cannot be undone.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        final success = await VehicleService().removeVehicle(vehicle.id);
+                                        if (context.mounted) {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(success ? 'Vehicle deleted successfully' : 'Failed to delete vehicle'),
+                                              backgroundColor: success ? Colors.green : Colors.red,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

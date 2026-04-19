@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../models/customer.dart';
+import '../models/auth_service.dart';
 
 class AddCustomerScreen extends StatefulWidget {
   const AddCustomerScreen({super.key});
@@ -27,10 +28,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     super.dispose();
   }
 
-  void _submitForm() {
+  bool _isLoading = false;
+
+  void _submitForm() async {
     if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+      
       final newCustomer = Customer(
-        id: 'CUS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        id: '',
         name: _nameController.text,
         nic: _nicController.text,
         phone: _phoneController.text,
@@ -38,13 +43,30 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         email: _emailController.text,
         purchasedVehicles: [],
         joinDate: DateTime.now().toString().split(' ')[0],
+        branch: AuthService().branch,
       );
 
-      CustomerService().addCustomer(newCustomer);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Customer added successfully!')),
-      );
+      final errorMessage = await CustomerService().addOrUpdateCustomer(newCustomer);
+      
+      if (mounted) {
+        if (errorMessage == null) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Customer added successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -107,13 +129,18 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _submitForm,
+                  onPressed: _isLoading ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2C3545),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('Add Customer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: _isLoading 
+                    ? const SizedBox(
+                        height: 24, 
+                        width: 24, 
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Add Customer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],

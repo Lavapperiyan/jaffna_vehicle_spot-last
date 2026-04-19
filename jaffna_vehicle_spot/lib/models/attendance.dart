@@ -32,37 +32,44 @@ class Attendance {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'userId': userId,
-      'userName': userName,
-      'userRole': userRole,
+      'user_id': userId,
+      'user_name': userName,
+      'user_role': userRole,
       'branch': branch,
-      'checkIn': checkIn.toIso8601String(),
-      'checkOut': checkOut?.toIso8601String(),
-      'totalHours': totalHours,
-      'overtimeHours': overtimeHours,
+      'check_in': checkIn.toIso8601String(),
+      'check_out': checkOut?.toIso8601String(),
+      'total_hours': totalHours,
+      'overtime_hours': overtimeHours,
       'status': status,
-      'loginLocation': loginLocation,
-      'logoutLocation': logoutLocation,
+      'login_location': loginLocation,
+      'logout_location': logoutLocation,
       'date': date,
     };
   }
 
+  double get currentTotalHours {
+    if (status == 'Active') {
+      final now = DateTime.now();
+      return now.difference(checkIn).inMinutes / 60.0;
+    }
+    return totalHours;
+  }
+
   factory Attendance.fromJson(Map<String, dynamic> json) {
     return Attendance(
-      id: json['id'],
-      userId: json['userId'],
-      userName: json['userName'] ?? 'Unknown',
-      userRole: json['userRole'] ?? 'Staff',
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id'] ?? '',
+      userName: json['user_name'] ?? 'Unknown',
+      userRole: json['user_role'] ?? 'Staff',
       branch: json['branch'] ?? 'Jaffna',
-      checkIn: DateTime.parse(json['checkIn']),
-      checkOut: json['checkOut'] != null ? DateTime.parse(json['checkOut']) : null,
-      totalHours: json['totalHours']?.toDouble() ?? 0.0,
-      overtimeHours: json['overtimeHours']?.toDouble() ?? 0.0,
+      checkIn: json['check_in'] != null ? DateTime.parse(json['check_in']) : DateTime.now(),
+      checkOut: json['check_out'] != null ? DateTime.parse(json['check_out']) : null,
+      totalHours: (json['total_hours'] is num) ? (json['total_hours'] as num).toDouble() : 0.0,
+      overtimeHours: (json['overtime_hours'] is num) ? (json['overtime_hours'] as num).toDouble() : 0.0,
       status: json['status'] ?? 'Active',
-      loginLocation: json['loginLocation'],
-      logoutLocation: json['logoutLocation'],
-      date: json['date'],
+      loginLocation: json['login_location'],
+      logoutLocation: json['logout_location'],
+      date: json['date'] ?? '',
     );
   }
 }

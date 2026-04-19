@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../models/auth_service.dart';
 import '../models/vehicle.dart';
 import '../models/attendance_service.dart';
+import '../models/invoice.dart';
 import 'package:intl/intl.dart';
 import 'staff_settings_screen.dart';
 import 'customers_screen.dart';
@@ -21,7 +22,9 @@ class StaffHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        onRefresh: () => InvoiceService().fetchInvoices(),
+        child: CustomScrollView(
         slivers: [
           // 1. Sleek Modern Header
           SliverToBoxAdapter(
@@ -203,20 +206,6 @@ class StaffHomeScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(LucideIcons.logOut, color: Colors.white70, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          AuthService().logout();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
-                            (route) => false,
-                          );
-                        },
-                      ),
                     ],
                   ),
                 ],
@@ -262,12 +251,6 @@ class StaffHomeScreen extends StatelessWidget {
                         label: 'Add Customer',
                         color: const Color(0xFF8B5CF6),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen())),
-                      ),
-                      _buildQuickAction(
-                        icon: LucideIcons.trendingUp,
-                        label: 'My Sales',
-                        color: const Color(0xFF10B981),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportsScreen())),
                       ),
                     ],
                   ),
@@ -373,108 +356,141 @@ class StaffHomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFFF1F5F9)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: kBrandDark.withValues(alpha: 0.06),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Target Progress',
-                              style: TextStyle(
-                                color: Color(0xFF64748B),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                  ValueListenableBuilder<List<Invoice>>(
+                    valueListenable: InvoiceService().invoicesNotifier,
+                    builder: (context, invoices, _) {
+                      final authService = AuthService();
+                      final currentMonth = DateTime.now().month;
+                      final currentBranch = authService.branch;
+                      
+                      // Filter for target: Branch-wide for Managers, Personal for Staff
+                      final monthlySales = invoices.where((inv) {
+                        final date = DateTime.tryParse(inv.date);
+                        
+                        // Smart filtering for legacy data (robust comparison)
+                        final String userBranchLower = currentBranch.trim().toLowerCase();
+                        final String invBranchLower = inv.branch.trim().toLowerCase();
+
+                        bool branchMatch = userBranchLower == 'all branches' 
+                            || invBranchLower == userBranchLower 
+                            || invBranchLower.isEmpty;
+                            
+                        // For the dashboard, we now show all sales in the branch to everyone
+                        bool userMatch = true; 
+                            
+                        return branchMatch && userMatch &&
+                               date != null &&
+                               date.month == currentMonth; // Ignore year for demo/legacy data
+                      }).length;
+
+                      const int target = 5;
+                      final double progress = (monthlySales / target).clamp(0.0, 1.0);
+                      final int percentage = (progress * 100).toInt();
+                      final monthName = DateFormat('MMMM yyyy').format(DateTime.now());
+
+                      return Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFFF1F5F9)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: kBrandDark.withValues(alpha: 0.06),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: kBrandDark.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Text(
-                                'March 2026',
-                                style: TextStyle(
-                                  color: kBrandDark,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Target Progress',
+                                  style: TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text(
-                              '3',
-                              style: TextStyle(
-                                fontSize: 36,
-                                fontWeight: FontWeight.w900,
-                                color: kBrandDark,
-                                height: 1,
-                              ),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 4, left: 4),
-                              child: Text(
-                                '/ 5 Vehicles Sold',
-                                style: TextStyle(
-                                  color: Color(0xFF64748B),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: kBrandDark.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    monthName,
+                                    style: const TextStyle(
+                                      color: kBrandDark,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            const Spacer(),
-                            const Text(
-                              '60%',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF10B981),
-                              ),
+                            const SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '$monthlySales',
+                                  style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w900,
+                                    color: kBrandDark,
+                                    height: 1,
+                                  ),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 4, left: 4),
+                                  child: Text(
+                                    '/ 5 Vehicles Sold',
+                                    style: TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '$percentage%',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF10B981),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: LinearProgressIndicator(
+                                    value: progress,
+                                    minHeight: 12,
+                                    backgroundColor: const Color(0xFFF1F5F9),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(kBrandGold),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: LinearProgressIndicator(
-                                value: 0.6,
-                                minHeight: 12,
-                                backgroundColor: const Color(0xFFF1F5F9),
-                                valueColor: const AlwaysStoppedAnimation<Color>(kBrandGold),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
           ),
-
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
           // 4. Highlighted Metrics (My Sales & Total Stock)
@@ -484,25 +500,18 @@ class StaffHomeScreen extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildCompactMetric(
-                      icon: LucideIcons.trendingUp,
-                      color: const Color(0xFF10B981),
-                      label: 'My Total Sales',
-                      value: 'Rs. 44.0M',
-                      trend: '+12%',
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
                     child: ValueListenableBuilder<List<Vehicle>>(
                       valueListenable: VehicleService().vehiclesNotifier,
-                      builder: (context, vehicles, _) => _buildCompactMetric(
-                        icon: LucideIcons.car,
-                        color: kBrandDark,
-                        label: 'Total On-Stock',
-                        value: '${vehicles.length}',
-                        trend: 'Available',
-                      ),
+                      builder: (context, vehicles, _) {
+                        // Optional: Could filter vehicles by branch if we add branch to Vehicle model
+                        return _buildCompactMetric(
+                          icon: LucideIcons.car,
+                          color: kBrandDark,
+                          label: 'Total On-Stock',
+                          value: '${vehicles.length}',
+                          trend: 'Available',
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -512,57 +521,10 @@ class StaffHomeScreen extends StatelessWidget {
           
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-          // 5. Staff's Recent Activity
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'My Recent Sales',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => onTabChange?.call(3),
-                    style: TextButton.styleFrom(
-                      foregroundColor: kBrandGold,
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(50, 30),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('View All', style: TextStyle(fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildStreamlinedSale(
-                  customer: 'Nimal Silva',
-                  vehicle: '2024 BMW M5',
-                  amount: 'Rs. 24.5M',
-                  timeAgo: '2 hours ago',
-                ),
-                _buildStreamlinedSale(
-                  customer: 'Kumar Perera',
-                  vehicle: '2024 Audi Q7',
-                  amount: 'Rs. 19.5M',
-                  timeAgo: '2 days ago',
-                ),
-              ]),
-            ),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
+    ),
     );
   }
 
@@ -673,77 +635,6 @@ class StaffHomeScreen extends StatelessWidget {
               fontSize: 11,
               color: Color(0xFF64748B),
               fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStreamlinedSale({
-    required String customer,
-    required String vehicle,
-    required String amount,
-    required String timeAgo,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: kBrandDark.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(LucideIcons.receipt, color: kBrandDark, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  customer,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$vehicle • $timeAgo',
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          Text(
-            amount,
-            style: const TextStyle(
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
             ),
           ),
         ],

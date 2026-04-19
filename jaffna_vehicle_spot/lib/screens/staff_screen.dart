@@ -70,53 +70,71 @@ class _StaffScreenState extends State<StaffScreen> {
             ),
           ),
           Expanded(
-            child: ValueListenableBuilder<List<Staff>>(
-              valueListenable: staffService.staffsNotifier,
-              builder: (context, staffs, child) {
-                final String role = AuthService().userPost.toLowerCase();
-                final bool isAdmin = role.contains('admin');
-                final bool isManager = role.contains('manager');
-                final String currentBranch = AuthService().branch;
+            child: RefreshIndicator(
+              onRefresh: () => staffService.fetchStaffs(),
+              child: ValueListenableBuilder<List<Staff>>(
+                valueListenable: staffService.staffsNotifier,
+                builder: (context, staffs, child) {
+                  final String role = AuthService().userPost.toLowerCase();
+                  final String uName = AuthService().userName.toLowerCase();
+                  final bool isAdmin = role.contains('admin');
+                  final bool isManager = role.contains('manager') || uName.contains('manager');
+                  final String currentBranch = AuthService().branch.trim().toLowerCase();
 
-                final filteredStaffs = staffs.where((staff) {
-                  final matchesSearch = staff.name.toLowerCase().contains(_searchQuery) ||
-                                        staff.roleDisplay.toLowerCase().contains(_searchQuery);
-                  
-                  if (isAdmin) {
-                    return matchesSearch;
-                  } else if (isManager) {
-                    return matchesSearch && staff.branch == currentBranch;
-                  }
-                  
-                  return false;
-                }).toList();
+                  final filteredStaffs = staffs.where((staff) {
+                    final matchesSearch = staff.name.toLowerCase().contains(_searchQuery) ||
+                                          staff.roleDisplay.toLowerCase().contains(_searchQuery);
+                    
+                    // Robust branch check
+                    final String staffBranch = staff.branch.trim().toLowerCase();
+                    final bool isBranchMatch = currentBranch == 'all branches' || 
+                                             staffBranch == currentBranch || 
+                                             staffBranch.isEmpty;
 
-                if (filteredStaffs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    if (isAdmin) {
+                      return matchesSearch;
+                    } else if (isManager) {
+                      // Managers only see subordinate staff within their own branch
+                      final bool isSubordinate = staff.role != StaffRole.admin && 
+                                               staff.role != StaffRole.manager;
+                      return matchesSearch && isBranchMatch && isSubordinate;
+                    }
+                    
+                    return false; // Regular staff cannot see the management list
+                  }).toList();
+
+                  if (filteredStaffs.isEmpty) {
+                    return ListView( // Wrap in ListView to enable RefreshIndicator on empty state
                       children: [
-                        const Icon(LucideIcons.users, size: 48, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isEmpty 
-                            ? 'No staff members found.' 
-                            : 'No matching staff members found.',
-                          style: const TextStyle(color: Colors.grey),
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(LucideIcons.users, size: 48, color: Colors.grey),
+                              const SizedBox(height: 16),
+                              Text(
+                                _searchQuery.isEmpty 
+                                  ? 'No subordinate staff found in your branch.' 
+                                  : 'No matching staff members found.',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    itemCount: filteredStaffs.length,
+                    itemBuilder: (context, index) {
+                      final staff = filteredStaffs[index];
+                      return _buildStaffCard(context, staff);
+                    },
                   );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                  itemCount: filteredStaffs.length,
-                  itemBuilder: (context, index) {
-                    final staff = filteredStaffs[index];
-                    return _buildStaffCard(context, staff);
-                  },
-                );
-              },
+                },
+              ),
             ),
           ),
         ],
