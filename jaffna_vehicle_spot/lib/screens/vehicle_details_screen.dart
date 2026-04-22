@@ -453,36 +453,43 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Active state of the price',
-                  style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500)),
-              GestureDetector(
-                onTap: _showEditPriceDialog,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(LucideIcons.edit3, color: Colors.white, size: 14),
-                ),
-              ),
-            ],
-          ),
+          const Text('Active state of the price',
+              style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(price,
                   style: const TextStyle(
-                      color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
+                      color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
               const Padding(
                 padding: EdgeInsets.only(top: 4, left: 2),
                 child: Text('Rs.', style: TextStyle(color: Colors.white70, fontSize: 14)),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          // New Big Update Price Button
+          GestureDetector(
+            onTap: _showEditPriceDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+              ),
+              alignment: Alignment.center,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(LucideIcons.edit3, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text('Update Price', 
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
