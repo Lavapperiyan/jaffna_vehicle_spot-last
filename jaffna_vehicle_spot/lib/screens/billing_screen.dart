@@ -142,13 +142,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
                       if (!branchMatch) return false;
 
-                      // 2. Personal Sales Filtering (Role-based)
-                      if (!isManager) {
-                        bool userMatch = invoice.salesPersonId == authService.userId && authService.userId.isNotEmpty;
-                        if (!userMatch) return false;
-                      }
-                      
-                      // 3. Search Query Filtering
+                      // 2. Search Query Filtering
                       final String query = _searchQuery.toLowerCase();
                       return invoice.id.toLowerCase().contains(query) ||
                              invoice.customerName.toLowerCase().contains(query);

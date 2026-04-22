@@ -34,8 +34,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         textTheme: GoogleFonts.interTextTheme(),
       ),
-      home: const LoginScreen(),
+      home: AuthService().userId.isEmpty ? const LoginScreen() : const MainLayout(),
     );
   }
 }
-
