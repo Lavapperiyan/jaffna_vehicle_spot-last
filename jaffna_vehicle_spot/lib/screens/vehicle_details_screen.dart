@@ -128,44 +128,81 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                 ),
               ),
 
-              // Car Image Section
+              // Car Image Section (Multiple Images)
               const SizedBox(height: 20),
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Decorative circular glow/ring beneath car
-                  Container(
-                    width: 300,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.redAccent.withValues(alpha: 0.1),
-                          blurRadius: 100,
-                          spreadRadius: 20,
-                        ),
-                      ],
-                    ),
-                  ),
-                  InteractiveViewer(
-                    child: widget.vehicle.imageUrl.startsWith('http')
-                        ? Image.network(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity, height: 220)
-                        : Image.asset(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity, height: 220),
-                  ),
-                  // Small red indicator dot from design
-                  Positioned(
-                    bottom: 20,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.redAccent,
+              SizedBox(
+                height: 250,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Decorative circular glow/ring beneath car
+                    Container(
+                      width: 300,
+                      height: 150,
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.redAccent.withValues(alpha: 0.1),
+                            blurRadius: 100,
+                            spreadRadius: 20,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    if (widget.vehicle.imageUrls.isEmpty)
+                      InteractiveViewer(
+                        child: widget.vehicle.imageUrl.startsWith('http')
+                            ? Image.network(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity)
+                            : Image.asset(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity),
+                      )
+                    else
+                      PageView.builder(
+                        itemCount: widget.vehicle.imageUrls.length,
+                        itemBuilder: (context, index) {
+                          final img = widget.vehicle.imageUrls[index];
+                          return InteractiveViewer(
+                            child: img.startsWith('http')
+                                ? Image.network(img, fit: BoxFit.contain, width: double.infinity)
+                                : Image.asset(img, fit: BoxFit.contain, width: double.infinity),
+                          );
+                        },
+                      ),
+                    
+                    // Small indicator dots for multiple images
+                    if (widget.vehicle.imageUrls.length > 1)
+                      Positioned(
+                        bottom: 10,
+                        child: Row(
+                          children: List.generate(
+                            widget.vehicle.imageUrls.length,
+                            (index) => Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.white24,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    
+                    // Small red indicator dot from design
+                    Positioned(
+                      bottom: 20,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // Configurations / Specs Grid

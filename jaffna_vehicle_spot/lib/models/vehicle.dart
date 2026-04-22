@@ -20,6 +20,7 @@ class Vehicle {
   final List<String> configurations;
   final String branch;
   final String buyPrice;
+  final List<String> imageUrls;
 
   // Identification Fields
   final String chassisNo;
@@ -57,6 +58,7 @@ class Vehicle {
     this.color = 'Not specified',
     this.yearOfManufacture = 'Not specified',
     this.stockUpdateDate = 'Recently',
+    this.imageUrls = const [],
     this.garageDetails,
   });
 
@@ -83,6 +85,9 @@ class Vehicle {
       speedUp: json['speed_up'] ?? json['speedUp'] ?? '11.1 sec',
       fuelType: json['fuel_type'] ?? json['fuelType'] ?? 'Petrol',
       stockUpdateDate: json['updated_at'] ?? json['updatedAt'] ?? '',
+      imageUrls: json['image_urls'] != null 
+          ? List<String>.from(json['image_urls']) 
+          : (json['image_url'] != null ? [json['image_url']] : []),
       garageDetails: (json['status'] == 'In Garage' && json['garage_records'] != null && (json['garage_records'] as List).isNotEmpty)
           ? GarageDetails.fromJson((json['garage_records'] as List).first)
           : null,
@@ -91,13 +96,14 @@ class Vehicle {
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'brand': make,
+    'make': make,
     'model': model,
     'type': category,
     'selling_price': price,
     'cost_price': buyPrice,
     'status': status,
-    'image_url': imageUrl,
+    'image_url': imageUrls.isNotEmpty ? imageUrls.first : imageUrl,
+    'image_urls': imageUrls,
     'branch': branch,
     'chassis_no': chassisNo,
     'engine_no': engineNo,
@@ -112,6 +118,7 @@ class Vehicle {
     String? price,
     String? buyPrice,
     String? imageUrl,
+    List<String>? imageUrls,
   }) {
     return Vehicle(
       id: id,
@@ -123,6 +130,7 @@ class Vehicle {
       buyPrice: buyPrice ?? this.buyPrice,
       status: status ?? this.status,
       imageUrl: imageUrl ?? this.imageUrl,
+      imageUrls: imageUrls ?? this.imageUrls,
       consumption: consumption,
       power: power,
       speed: speed,

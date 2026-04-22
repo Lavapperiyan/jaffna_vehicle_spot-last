@@ -25,8 +25,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _buyPriceController = TextEditingController();
   final _amountController = TextEditingController();
   
-  Uint8List? _imageBytes;
-  String? _imageName;
+  List<Uint8List> _imagesBytes = [];
+  List<String> _imagesNames = [];
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
 
@@ -48,15 +48,33 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        _imageBytes = bytes;
-        _imageName = pickedFile.name;
-      });
+  Future<void> _pickImages() async {
+    if (_imagesBytes.length >= 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maximum 10 images allowed')),
+      );
+      return;
     }
+
+    final List<XFile> pickedFiles = await _picker.pickMultiImage();
+    if (pickedFiles.isNotEmpty) {
+      for (var file in pickedFiles) {
+        if (_imagesBytes.length < 10) {
+          final bytes = await file.readAsBytes();
+          setState(() {
+            _imagesBytes.add(bytes);
+            _imagesNames.add(file.name);
+          });
+        }
+      }
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _imagesBytes.removeAt(index);
+      _imagesNames.removeAt(index);
+    });
   }
 
   void _submitForm() async {
@@ -64,13 +82,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       setState(() => _isSubmitting = true);
 
       try {
-        String imageUrl = 'assets/toyota_chr.png'; // Fallback
+        List<String> imageUrls = [];
         
-        if (_imageBytes != null && _imageName != null) {
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_$_imageName';
-          final uploadedUrl = await VehicleService().uploadImage(_imageBytes!, fileName);
-          if (uploadedUrl != null) {
-            imageUrl = uploadedUrl;
+        if (_imagesBytes.isNotEmpty) {
+          for (int i = 0; i < _imagesBytes.length; i++) {
+            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_imagesNames[i]}';
+            final uploadedUrl = await VehicleService().uploadImage(_imagesBytes[i], fileName);
+            if (uploadedUrl != null) {
+              imageUrls.add(uploadedUrl);
+            }
           }
         }
 
@@ -86,7 +106,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           price: _amountController.text,
           buyPrice: _buyPriceController.text,
           status: 'Available',
-          imageUrl: imageUrl,
+          imageUrl: imageUrls.isNotEmpty ? imageUrls.first : 'assets/toyota_chr.png',
+          imageUrls: imageUrls,
           chassisNo: _chassisController.text,
           engineNo: _engineController.text,
           registrationNo: _regController.text,
@@ -159,36 +180,60 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle('Vehicle Image'),
+                  _buildSectionTitle('Vehicle Images (Up to 10)'),
                   const SizedBox(height: 16),
-                  Center(
-                    child: GestureDetector(
-                      onTap: _pickImage,
-                      child: Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: _imageBytes != null
-                            ? ClipRRect(
+                  SizedBox(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _imagesBytes.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == _imagesBytes.length) {
+                          return GestureDetector(
+                            onTap: _pickImages,
+                            child: Container(
+                              width: 100,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                child: Image.memory(_imageBytes!, fit: BoxFit.cover),
-                              )
-                            : const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(LucideIcons.camera, size: 40, color: Color(0xFF9CA3AF)),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Tap to select vehicle image',
-                                    style: TextStyle(color: Color(0xFF9CA3AF)),
-                                  ),
-                                ],
+                                border: Border.all(color: const Color(0xFFE5E7EB), style: BorderStyle.solid),
                               ),
-                      ),
+                              child: const Icon(LucideIcons.plus, color: Color(0xFF9CA3AF)),
+                            ),
+                          );
+                        }
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                image: DecorationImage(
+                                  image: MemoryImage(_imagesBytes[index]),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 16,
+                              child: GestureDetector(
+                                onTap: () => _removeImage(index),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(LucideIcons.x, size: 12, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 32),
