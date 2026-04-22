@@ -215,7 +215,10 @@ class VehicleService {
   Future<void> fetchVehicles() async {
     try {
       // Fetch vehicles and garage records separately to avoid schema relation errors
-      final vResponse = await _supabase.from(ApiConfig.tableVehicles).select();
+      final vResponse = await _supabase
+          .from(ApiConfig.tableVehicles)
+          .select()
+          .neq('status', 'Deleted');
       final gResponse = await _supabase.from('garage_records').select();
 
       if (vResponse.isNotEmpty) {
@@ -352,7 +355,7 @@ class VehicleService {
     try {
       await _supabase
           .from(ApiConfig.tableVehicles)
-          .delete()
+          .update({'status': 'Deleted'})
           .eq('id', id);
 
       await fetchVehicles();
