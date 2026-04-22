@@ -205,33 +205,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                 ),
               ),
 
-              // Configurations / Specs Grid
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _buildSpecRow(LucideIcons.droplets, 'Consumption', widget.vehicle.consumption),
-                          const SizedBox(height: 20),
-                          _buildSpecRow(LucideIcons.gauge, 'Speed', widget.vehicle.speed),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _buildSpecRow(LucideIcons.zap, 'Power', widget.vehicle.power),
-                          const SizedBox(height: 20),
-                          _buildSpecRow(LucideIcons.timer, 'Speed-up', widget.vehicle.speedUp),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
               // Vehicle Identification Section
               Padding(
@@ -316,28 +289,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
     );
   }
 
-  Widget _buildSpecRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: Colors.white54, size: 18),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildFilterBadge(String label, bool isSelected) {
     return Container(
