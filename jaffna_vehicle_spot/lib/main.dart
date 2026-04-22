@@ -16,8 +16,8 @@ void main() async {
     anonKey: ApiConfig.supabaseAnonKey,
   );
 
-  await AuthService().initializeUser();
   await NotificationService().init();
+  await AuthService().logout();
   runApp(const MyApp());
 }
 
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         textTheme: GoogleFonts.interTextTheme(),
       ),
-      home: AuthService().userId.isEmpty ? const LoginScreen() : const MainLayout(),
+      home: const LoginScreen(),
     );
   }
 }
