@@ -131,22 +131,7 @@ class _BillingScreenState extends State<BillingScreen> {
                                          userRole.contains('admin') || 
                                          authService.userName.toLowerCase().contains('manager');
 
-                    final filteredInvoices = invoices.where((invoice) {
-                      // 1. Branch Filtering
-                      final String userBranchLower = currentBranch.trim().toLowerCase();
-                      final String invBranchLower = invoice.branch.trim().toLowerCase();
-
-                      bool branchMatch = userBranchLower == 'all branches' 
-                          || invBranchLower == userBranchLower 
-                          || invBranchLower.isEmpty;
-
-                      if (!branchMatch) return false;
-
-                      // 2. Search Query Filtering
-                      final String query = _searchQuery.toLowerCase();
-                      return invoice.id.toLowerCase().contains(query) ||
-                             invoice.customerName.toLowerCase().contains(query);
-                    }).toList();
+                    final filteredInvoices = invoices.toList();
 
                     if (filteredInvoices.isEmpty) {
                       return ListView(
