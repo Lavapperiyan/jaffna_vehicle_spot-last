@@ -50,6 +50,11 @@ class Attendance {
   double get currentTotalHours {
     if (status == 'Active') {
       final now = DateTime.now();
+      final diffInHours = now.difference(checkIn).inHours;
+      // If session has been active for more than 16 hours, it's likely a forgotten logout
+      if (diffInHours > 16) {
+        return 0.0; 
+      }
       return now.difference(checkIn).inMinutes / 60.0;
     }
     return totalHours;

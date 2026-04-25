@@ -109,8 +109,8 @@ class AuthService {
     _userId = userId;
   }
 
-  Future<void> logout() async {
-    AttendanceService().checkOut();
+  Future<void> logout({DateTime? customTime}) async {
+    await AttendanceService().checkOut(customTime: customTime);
     await _supabase.auth.signOut();
     _userName = 'Guest';
     _userPost = 'Visitor';
@@ -158,7 +158,9 @@ class AuthService {
           
           if (hoursPassed >= 11) {
             debugPrint('Session expired (11h). Logging out.');
-            await logout();
+            // Record checkout as exactly 11 hours after login to avoid massive durations
+            final expiryTime = loginDate.add(const Duration(hours: 11));
+            await logout(customTime: expiryTime);
             return;
           }
         } else {

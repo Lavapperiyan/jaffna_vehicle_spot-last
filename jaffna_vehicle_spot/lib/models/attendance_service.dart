@@ -26,6 +26,43 @@ class AttendanceService {
   final int forceLogoutHour = 22;
 
   Future<void> checkIn(String userId, String userName, String userRole, String branch) async {
+    // 1. Close any existing active sessions for this user to prevent multiple active sessions
+    try {
+      final activeResponse = await _supabase
+          .from(ApiConfig.tableAttendance)
+          .select('id, check_in')
+          .eq('user_id', userId)
+          .eq('status', 'Active');
+      
+      final List<dynamic> activeData = activeResponse as List;
+      for (var item in activeData) {
+        final recordId = item['id'];
+        final checkInStr = item['check_in'];
+        if (checkInStr != null) {
+          final oldCheckIn = DateTime.parse(checkInStr);
+          final now = DateTime.now();
+          
+          // If the old session is from a previous day, set checkout to 8 hours after check-in
+          // Otherwise, use current time
+          DateTime checkoutTime = now;
+          if (oldCheckIn.year != now.year || oldCheckIn.month != now.month || oldCheckIn.day != now.day) {
+            checkoutTime = oldCheckIn.add(const Duration(hours: 8));
+          }
+          
+          final duration = checkoutTime.difference(oldCheckIn);
+          final hours = duration.inMinutes / 60.0;
+          
+          await _supabase.from(ApiConfig.tableAttendance).update({
+            'check_out': checkoutTime.toIso8601String(),
+            'total_hours': hours,
+            'status': 'Completed',
+          }).eq('id', recordId);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error auto-closing old sessions: $e');
+    }
+
     final now = DateTime.now();
     
     _currentAttendance = Attendance(
@@ -62,12 +99,13 @@ class AttendanceService {
     }
     
     _updateAllAttendances(_currentAttendance!);
+    await refreshFromSupabase(); // Ensure we have the latest state
   }
 
-  Future<void> checkOut() async {
+  Future<void> checkOut({DateTime? customTime}) async {
     if (_currentAttendance == null) return;
 
-    final now = DateTime.now();
+    final now = customTime ?? DateTime.now();
     final checkIn = _currentAttendance!.checkIn;
     
     // Calculate total hours

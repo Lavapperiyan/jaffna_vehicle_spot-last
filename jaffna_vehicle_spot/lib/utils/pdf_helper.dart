@@ -755,7 +755,9 @@ class PdfHelper {
                   DateFormat('dd/MM/yyyy').format(a.checkIn),
                   a.userName.toUpperCase(),
                   DateFormat('hh:mm:ss a').format(a.checkIn),
-                  a.checkOut != null ? DateFormat('hh:mm:ss a').format(a.checkOut!) : 'STILL ACTIVE',
+                  a.checkOut != null 
+                    ? DateFormat('hh:mm:ss a').format(a.checkOut!) 
+                    : (DateTime.now().difference(a.checkIn).inHours > 16 ? 'FORGOT LOGOUT' : 'STILL ACTIVE'),
                   '${a.currentTotalHours.toStringAsFixed(2)}h',
                   a.branch,
                 ]),
