@@ -25,8 +25,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _buyPriceController = TextEditingController();
   final _amountController = TextEditingController();
   
-  List<Uint8List> _imagesBytes = [];
-  List<String> _imagesNames = [];
+  final List<Uint8List> _imagesBytes = [];
+  final List<String> _imagesNames = [];
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
 

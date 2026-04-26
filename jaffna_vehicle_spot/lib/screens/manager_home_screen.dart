@@ -11,6 +11,7 @@ import 'login_screen.dart';
 import 'garage_vehicles_screen.dart';
 import 'commission_reports_screen.dart';
 import '../models/invoice.dart';
+import 'branch_management_screen.dart';
 
 const Color kBrandDark = Color(0xFF2C3545);
 const Color kBrandGold = Color(0xFFE8BC44);
@@ -166,6 +167,11 @@ class ManagerHomeScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(builder: (context) => const CommissionReportsScreen()),
                             );
+                          } else if (value == 'branch_management') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const BranchManagementScreen()),
+                            );
                           } else if (value == 'logout') {
                             AuthService().logout();
                             Navigator.pushAndRemoveUntil(
@@ -233,6 +239,17 @@ class ManagerHomeScreen extends StatelessWidget {
                                 const Icon(LucideIcons.percent, color: kBrandDark, size: 20),
                                 const SizedBox(width: 12),
                                 const Text('Commission Reports', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
+                              ],
+                            ),
+                          ),
+                          if (AuthService().userPost.toLowerCase().contains('admin'))
+                          PopupMenuItem(
+                            value: 'branch_management',
+                            child: Row(
+                              children: [
+                                const Icon(LucideIcons.building, color: kBrandDark, size: 20),
+                                const SizedBox(width: 12),
+                                const Text('Branch Management', style: TextStyle(fontWeight: FontWeight.w600, color: kBrandDark)),
                               ],
                             ),
                           ),

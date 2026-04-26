@@ -17,15 +17,67 @@ class ManagerSettingsScreen extends StatelessWidget {
       valueListenable: staffService.staffsNotifier,
       builder: (context, staffs, child) {
         // Find the staff member corresponding to the logged-in manager
-        final currentManager = staffs.firstWhere(
-          (s) => s.username == authService.userId,
-          orElse: () => staffs.firstWhere((s) => s.role == StaffRole.manager, orElse: () => staffs.first),
-        );
+        Staff currentManager;
+        final bool isSystemAdmin = authService.userPost.toLowerCase().contains('admin');
+        
+        try {
+          currentManager = staffs.firstWhere((s) => s.id == authService.userId);
+        } catch (_) {
+          // If not found in staff table (like a super admin), synthesize one from AuthService
+          if (isSystemAdmin) {
+            currentManager = Staff(
+              id: authService.userId,
+              staffCode: 'ADMIN-001',
+              name: authService.userName,
+              fullName: authService.userName,
+              role: StaffRole.admin,
+              phone: '',
+              mobileNo: '',
+              homeNo: '',
+              email: authService.userName.toLowerCase().replaceAll(' ', '') + '@jaffnavspot.com',
+              joinDate: 'N/A',
+              branch: authService.branch,
+              postalAddress: '',
+              permanentAddress: '',
+              gender: '',
+              civilStatus: '',
+              dob: '',
+              nicNo: '',
+              spouseName: '',
+              spouseContact: '',
+              spouseNic: '',
+              spouseAddress: '',
+              spouseRelationship: '',
+              olResults: '',
+              alResults: '',
+              otherQualifications: '',
+              hasOffense: false,
+              offenseNature: '',
+              salaryAmount: '0',
+              salaryAllowance: '0',
+              bankName: '',
+              bankBranch: '',
+              accountNo: '',
+              epfNo: '',
+              username: 'admin',
+              password: '',
+            );
+          } else {
+            // Fallback to first manager if not found and not admin (should not happen)
+            currentManager = staffs.firstWhere(
+              (s) => s.role == StaffRole.manager, 
+              orElse: () => staffs.isNotEmpty ? staffs.first : Staff.fromJson({'name': authService.userName, 'role': 'Manager'})
+            );
+          }
+        }
+
+        final bool showAdminLabels = currentManager.role == StaffRole.admin || isSystemAdmin;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           appBar: AppBar(
-            title: const Text('Manager Settings', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24)),
+            title: Text(showAdminLabels ? 'Admin Settings' : 'Manager Settings', 
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 24)),
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xFF1E293B),
             elevation: 0,
@@ -36,12 +88,12 @@ class ManagerSettingsScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 24),
                 // Header Profile Card
-                _buildHeaderCard(context, currentManager),
+                _buildHeaderCard(context, currentManager, showAdminLabels),
                 const SizedBox(height: 32),
                 
                 // Account Info Group
-                _buildSettingsGroup(context, 'Branch Management Profile', [
-                  _buildDetailTile('Manager ID', currentManager.id, LucideIcons.shieldCheck, const Color(0xFF2C3545)),
+                _buildSettingsGroup(context, showAdminLabels ? 'Admin Authority Profile' : 'Branch Management Profile', [
+                  _buildDetailTile(showAdminLabels ? 'Admin ID' : 'Manager ID', currentManager.id, LucideIcons.shieldCheck, const Color(0xFF2C3545)),
                   _buildDetailTile('System Username', currentManager.username, LucideIcons.user, const Color(0xFF3B82F6)),
                   _buildDetailTile('Assigned Branch', currentManager.branch, LucideIcons.mapPin, const Color(0xFF10B981)),
                   _buildDetailTile('Role Authority', currentManager.roleDisplay, LucideIcons.key, const Color(0xFFF59E0B)),
@@ -93,7 +145,7 @@ class ManagerSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeaderCard(BuildContext context, Staff staff) {
+  Widget _buildHeaderCard(BuildContext context, Staff staff, bool showAdminLabels) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
@@ -129,9 +181,9 @@ class ManagerSettingsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: const Color(0xFFE8BC44).withValues(alpha: 0.3)),
                     ),
-                    child: const Text(
-                      'BRANCH MANAGER',
-                      style: TextStyle(color: Color(0xFFB48A00), fontWeight: FontWeight.w800, fontSize: 10, letterSpacing: 0.5),
+                    child: Text(
+                      showAdminLabels ? 'SYSTEM ADMIN' : 'BRANCH MANAGER',
+                      style: const TextStyle(color: Color(0xFFB48A00), fontWeight: FontWeight.w800, fontSize: 10, letterSpacing: 0.5),
                     ),
                   ),
                 ],

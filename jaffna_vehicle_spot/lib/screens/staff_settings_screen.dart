@@ -16,11 +16,18 @@ class StaffSettingsScreen extends StatelessWidget {
     return ValueListenableBuilder<List<Staff>>(
       valueListenable: staffService.staffsNotifier,
       builder: (context, staffs, child) {
-        // Find the staff member corresponding to the logged-in user
-        final currentStaff = staffs.firstWhere(
-          (s) => s.username == authService.userId,
-          orElse: () => staffs.first, // Fallback to first if not found (should not happen normally)
-        );
+        Staff currentStaff;
+        try {
+          currentStaff = staffs.firstWhere((s) => s.id == authService.userId);
+        } catch (_) {
+          // If not found, use synthesized data from authService to avoid showing wrong user
+          currentStaff = Staff.fromJson({
+            'id': authService.userId,
+            'name': authService.userName,
+            'role': authService.userPost,
+            'branch': authService.branch,
+          });
+        }
 
         return Scaffold(
           backgroundColor: const Color(0xFFF3F4F6),

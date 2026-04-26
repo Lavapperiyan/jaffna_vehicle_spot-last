@@ -13,7 +13,7 @@ class BillingScreen extends StatefulWidget {
 
 class _BillingScreenState extends State<BillingScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+
 
   @override
   void dispose() {
@@ -94,9 +94,6 @@ class _BillingScreenState extends State<BillingScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.toLowerCase();
-                  });
                 },
                 decoration: const InputDecoration(
                   icon: Icon(LucideIcons.search, size: 20, color: Color(0xFF6B7280)),
@@ -124,12 +121,6 @@ class _BillingScreenState extends State<BillingScreen> {
                 child: ValueListenableBuilder<List<Invoice>>(
                   valueListenable: invoiceService.invoicesNotifier,
                   builder: (context, invoices, child) {
-                    final authService = AuthService();
-                    final currentBranch = authService.branch;
-                    final String userRole = authService.userPost.toLowerCase();
-                    final bool isManager = userRole.contains('manager') || 
-                                         userRole.contains('admin') || 
-                                         authService.userName.toLowerCase().contains('manager');
 
                     final filteredInvoices = invoices.toList();
 

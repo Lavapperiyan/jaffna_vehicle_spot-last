@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/login_screen.dart';
-import 'screens/main_layout.dart';
 import 'utils/api_config.dart';
 import 'utils/notification_service.dart';
 
