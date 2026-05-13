@@ -6,7 +6,9 @@ import '../models/vehicle.dart';
 import 'package:intl/intl.dart';
 
 class AddVehicleScreen extends StatefulWidget {
-  const AddVehicleScreen({super.key});
+  final Vehicle? vehicleToEdit;
+
+  const AddVehicleScreen({super.key, this.vehicleToEdit});
 
   @override
   State<AddVehicleScreen> createState() => _AddVehicleScreenState();
@@ -15,7 +17,6 @@ class AddVehicleScreen extends StatefulWidget {
 class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _makeController = TextEditingController();
   final _modelController = TextEditingController();
   final _chassisController = TextEditingController();
   final _engineController = TextEditingController();
@@ -33,10 +34,36 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   String _selectedCategory = 'Car';
   final List<String> _categories = ['Car', 'Van', 'Load Vehicle', 'Electric'];
 
+  String _selectedFuelType = 'Petrol';
+  final List<String> _fuelTypes = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.vehicleToEdit != null) {
+      final v = widget.vehicleToEdit!;
+      _nameController.text = v.name;
+      _modelController.text = v.model;
+      _chassisController.text = v.chassisNo;
+      _engineController.text = v.engineNo;
+      _regController.text = v.registrationNo;
+      _colorController.text = v.color;
+      _yearController.text = v.yearOfManufacture;
+      _buyPriceController.text = v.buyPrice;
+      _amountController.text = v.price;
+      
+      if (_categories.contains(v.category)) {
+        _selectedCategory = v.category;
+      }
+      if (_fuelTypes.contains(v.fuelType)) {
+        _selectedFuelType = v.fuelType;
+      }
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
-    _makeController.dispose();
     _modelController.dispose();
     _chassisController.dispose();
     _engineController.dispose();
@@ -82,9 +109,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       setState(() => _isSubmitting = true);
 
       try {
-        List<String> imageUrls = [];
+        List<String> imageUrls = widget.vehicleToEdit?.imageUrls.toList() ?? [];
+        if (imageUrls.isEmpty && widget.vehicleToEdit != null && widget.vehicleToEdit!.imageUrl.isNotEmpty) {
+           imageUrls = [widget.vehicleToEdit!.imageUrl];
+        }
         
         if (_imagesBytes.isNotEmpty) {
+          // If we add new images during edit, we can choose to append or replace. Here we append.
           for (int i = 0; i < _imagesBytes.length; i++) {
             final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_imagesNames[i]}';
             final uploadedUrl = await VehicleService().uploadImage(_imagesBytes[i], fileName);
@@ -98,34 +129,37 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         final formattedDate = DateFormat('yyyy-MM-dd').format(now);
         
         final newVehicle = Vehicle(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: widget.vehicleToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
           name: _nameController.text,
-          make: _makeController.text,
+          make: widget.vehicleToEdit?.make ?? 'Unknown',
           model: _modelController.text,
           category: _selectedCategory,
           price: _amountController.text,
           buyPrice: _buyPriceController.text,
-          status: 'Available',
+          status: widget.vehicleToEdit?.status ?? 'Available',
           imageUrl: imageUrls.isNotEmpty ? imageUrls.first : 'assets/toyota_chr.png',
           imageUrls: imageUrls,
+          fuelType: _selectedFuelType,
           chassisNo: _chassisController.text,
           engineNo: _engineController.text,
           registrationNo: _regController.text,
           color: _colorController.text,
           yearOfManufacture: _yearController.text,
-          stockUpdateDate: formattedDate,
+          stockUpdateDate: widget.vehicleToEdit?.stockUpdateDate ?? formattedDate,
         );
 
-        final success = await VehicleService().addVehicle(newVehicle);
+        final success = widget.vehicleToEdit != null
+            ? await VehicleService().updateVehicle(newVehicle)
+            : await VehicleService().addVehicle(newVehicle);
         
         if (mounted) {
           setState(() => _isSubmitting = false);
           if (success) {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Vehicle added successfully!'),
-                backgroundColor: Color(0xFF10B981),
+              SnackBar(
+                content: Text(widget.vehicleToEdit != null ? 'Vehicle updated successfully!' : 'Vehicle added successfully!'),
+                backgroundColor: const Color(0xFF10B981),
               ),
             );
           } else {
@@ -157,8 +191,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: const Text(
-          'Add New Vehicle',
+        title: Text(
+          widget.vehicleToEdit != null ? 'Edit Vehicle' : 'Add New Vehicle',
           style: TextStyle(
             color: Color(0xFF111827),
             fontWeight: FontWeight.bold,
@@ -237,20 +271,25 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                      const SizedBox(height: 16),
-                  _buildDropdownField('Vehicle Type', _selectedCategory, _categories, (val) {
-                    setState(() => _selectedCategory = val!);
-                  }),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDropdownField('Vehicle Type', _selectedCategory, _categories, (val) {
+                          setState(() => _selectedCategory = val!);
+                        }),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDropdownField('Fuel Type', _selectedFuelType, _fuelTypes, (val) {
+                          setState(() => _selectedFuelType = val!);
+                        }),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   _buildTextField('Vehicle Name', _nameController, 'e.g. TOYOTA C-HR'),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: _buildTextField('Make', _makeController, 'e.g. Toyota')),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildTextField('Model', _modelController, 'e.g. C-HR')),
-                    ],
-                  ),
+                  _buildTextField('Model', _modelController, 'e.g. C-HR'),
                   const SizedBox(height: 32),
                   _buildSectionTitle('Technical Details'),
                   const SizedBox(height: 16),
@@ -290,9 +329,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               width: 24,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
-                          : const Text(
-                              'Add Vehicle to Stocks',
-                              style: TextStyle(
+                          : Text(
+                              widget.vehicleToEdit != null ? 'Update Vehicle' : 'Add Vehicle to Stocks',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

@@ -147,6 +147,7 @@ class PdfHelper {
               _buildUnderlineInfoRow('Delivered To:', invoice.customerName),
               _buildUnderlineInfoRow('Address:', invoice.customerAddress),
               _buildUnderlineInfoRow('Contact No:', invoice.customerContact),
+              _buildUnderlineInfoRow('NIC No:', invoice.customerNic),
 
               pw.SizedBox(height: 20),
               pw.Text('Vehicle Details:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
@@ -189,7 +190,7 @@ class PdfHelper {
                       ),
                     ],
                   ),
-                  pw.TableRow(
+                   pw.TableRow(
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
@@ -208,6 +209,59 @@ class PdfHelper {
                       ),
                     ],
                   ),
+                  if (invoice.leaseAmount != '0' && invoice.leaseAmount.isNotEmpty)
+                    pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(4),
+                          child: pw.Text('Lease Amount', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(4),
+                          child: pw.RichText(
+                            text: pw.TextSpan(
+                              children: [
+                                pw.TextSpan(text: 'LKR ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
+                                pw.TextSpan(text: invoice.leaseAmount, style: pw.TextStyle(fontSize: 8, decoration: pw.TextDecoration.underline)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (invoice.downPayment != '0' && invoice.downPayment.isNotEmpty)
+                    pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(4),
+                          child: pw.Text('Down Payment', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(4),
+                          child: pw.RichText(
+                            text: pw.TextSpan(
+                              children: [
+                                pw.TextSpan(text: 'LKR ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
+                                pw.TextSpan(text: invoice.downPayment, style: pw.TextStyle(fontSize: 8, decoration: pw.TextDecoration.underline)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (invoice.leaseCompany.isNotEmpty)
+                    pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(4),
+                          child: pw.Text('Lease Company', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(4),
+                          child: pw.Text(invoice.leaseCompany, style: pw.TextStyle(fontSize: 8)),
+                        ),
+                      ],
+                    ),
                 ],
               ),
 
@@ -230,14 +284,6 @@ class PdfHelper {
                       children: [
                         pw.TextSpan(text: 'Customer Signature: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9)),
                         pw.TextSpan(text: '___________________', style: pw.TextStyle(fontSize: 9)),
-                      ],
-                    ),
-                  ),
-                  pw.RichText(
-                    text: pw.TextSpan(
-                      children: [
-                        pw.TextSpan(text: 'Date: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9)),
-                        pw.TextSpan(text: '__ / __ / 2025', style: pw.TextStyle(fontSize: 9)),
                       ],
                     ),
                   ),

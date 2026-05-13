@@ -110,6 +110,7 @@ class Vehicle {
     'registration_no': registrationNo,
     'color': color,
     'year': yearOfManufacture,
+    'fuel_type': fuelType,
   };
 
   Vehicle copyWith({
@@ -271,6 +272,21 @@ class VehicleService {
     } catch (e) {
       debugPrint('Add vehicle error: $e');
       rethrow; // Throw error to be caught by UI
+    }
+  }
+
+  Future<bool> updateVehicle(Vehicle vehicle) async {
+    try {
+      await _supabase
+          .from(ApiConfig.tableVehicles)
+          .update(vehicle.toJson())
+          .eq('id', vehicle.id);
+
+      await fetchVehicles();
+      return true;
+    } catch (e) {
+      debugPrint('Update vehicle error: $e');
+      rethrow;
     }
   }
 

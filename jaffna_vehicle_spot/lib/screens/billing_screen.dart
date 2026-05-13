@@ -16,6 +16,12 @@ class _BillingScreenState extends State<BillingScreen> {
 
 
   @override
+  void initState() {
+    super.initState();
+    InvoiceService().fetchInvoices();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -148,7 +154,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                       itemCount: filteredInvoices.length,
                       itemBuilder: (context, index) {
-                        final invoice = filteredInvoices[filteredInvoices.length - 1 - index];
+                        final invoice = filteredInvoices[index];
                         return _InvoiceCard(invoice: invoice);
                       },
                     );

@@ -26,6 +26,11 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
   );
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _totalController = TextEditingController();
+  final TextEditingController _leaseAmountController = TextEditingController(text: '0');
+  final TextEditingController _downPaymentController = TextEditingController(text: '0');
+  final TextEditingController _leaseCompanyController = TextEditingController();
+  
+  bool _isLease = false;
   
   Commission? _pendingCommission;
 
@@ -54,10 +59,20 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
     _dateController.dispose();
     _amountController.dispose();
     _totalController.dispose();
+    _leaseAmountController.dispose();
+    _downPaymentController.dispose();
+    _leaseCompanyController.dispose();
     super.dispose();
   }
 
   Future<void> _handleGenerateInvoice() async {
+    if (AuthService().userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: You must be logged in to generate an invoice.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     if (_nameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter customer name')),
@@ -67,7 +82,8 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
 
     // Create Invoice object
     final newInvoice = Invoice(
-      id: '', // Supabase will generate UUID
+      id: 'INV-${DateTime.now().millisecondsSinceEpoch}-${DateTime.now().microsecond}', // App generates UUID/ID
+
       customerName: _nameController.text,
       customerAddress: _addressController.text,
       customerContact: _contactController.text,
@@ -80,8 +96,10 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
       registrationNo: widget.vehicle.registrationNo,
       color: widget.vehicle.color,
       year: widget.vehicle.yearOfManufacture,
-      amount: _totalController.text,
-      leaseAmount: '0',
+      amount: _totalController.text.replaceAll(',', '').replaceAll('Rs. ', '').trim(),
+      leaseAmount: _isLease ? _leaseAmountController.text.replaceAll(',', '').replaceAll('Rs. ', '').trim() : '0',
+      downPayment: _isLease ? _downPaymentController.text.replaceAll(',', '').replaceAll('Rs. ', '').trim() : '0',
+      leaseCompany: _isLease ? _leaseCompanyController.text.trim() : '',
       date: _dateController.text,
       status: InvoiceStatus.paid,
       salesPersonId: AuthService().userId,
@@ -89,13 +107,52 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
       branch: AuthService().branch,
     );
 
-    // Save commission if exists
-    if (_pendingCommission != null) {
-      CommissionService().addCommission(_pendingCommission!);
+    // Save to global list
+    Invoice? insertedInvoice;
+    try {
+      insertedInvoice = await _invoiceService.addInvoice(newInvoice);
+    } catch (e) {
+      if (!mounted) return;
+      
+      String errorMessage = 'Failed to generate invoice';
+      if (e.toString().contains('row-level security policy') || e.toString().contains('42501')) {
+        errorMessage = 'Security Error: Your login session has expired. Please log out and log in again.';
+      } else {
+        errorMessage = 'Failed to generate invoice: $e';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+    
+    if (insertedInvoice == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to generate invoice')),
+      );
+      return;
     }
 
-    // Save to global list
-    await _invoiceService.addInvoice(newInvoice);
+    // Save commission if exists
+    if (_pendingCommission != null) {
+      final commissionToSave = Commission(
+        id: _pendingCommission!.id,
+        invoiceId: insertedInvoice.id, // Link to actual invoice
+        agentName: _pendingCommission!.agentName,
+        agentContact: _pendingCommission!.agentContact,
+        type: _pendingCommission!.type,
+        amount: _pendingCommission!.amount,
+        reason: _pendingCommission!.reason,
+        date: _pendingCommission!.date,
+      );
+      CommissionService().addCommission(commissionToSave);
+    }
     
     // Mark vehicle as Sold
     await VehicleService().updateVehicleStatus(widget.vehicle.id, 'Sold');
@@ -114,7 +171,7 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
     );
     CustomerService().addOrUpdateCustomer(customer);
 
-    await PdfHelper.viewPdf(newInvoice);
+    await PdfHelper.viewPdf(insertedInvoice);
     if (!mounted) return;
     Navigator.pop(context);
   }
@@ -240,6 +297,67 @@ class _InvoiceGenerationScreenState extends State<InvoiceGenerationScreen> {
               ),
               const SizedBox(height: 16),
               _buildEditableBillingRow('Subtotal', _amountController),
+              const Divider(height: 32),
+              
+              // Purchase Type Selector
+              const Text('Purchase Type', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _isLease = false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: !_isLease ? const Color(0xFF2C3545) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF2C3545)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Full Payment',
+                          style: TextStyle(
+                            color: !_isLease ? Colors.white : const Color(0xFF2C3545),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _isLease = true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _isLease ? const Color(0xFF2C3545) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF2C3545)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Lease',
+                          style: TextStyle(
+                            color: _isLease ? Colors.white : const Color(0xFF2C3545),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              
+              if (_isLease) ...[
+                const SizedBox(height: 16),
+                _buildInputField('Lease Company', 'Enter lease company name', _leaseCompanyController),
+                const SizedBox(height: 16),
+                _buildEditableBillingRow('Lease Amount', _leaseAmountController),
+                _buildEditableBillingRow('Down Payment', _downPaymentController),
+              ],
+
               const Divider(height: 32),
               _buildEditableBillingRow('Total Amount', _totalController, isTotal: true),
 

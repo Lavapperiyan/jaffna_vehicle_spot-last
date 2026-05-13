@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../models/vehicle.dart';
 import 'invoice_generation_screen.dart';
 import 'garage_form_screen.dart';
+import 'add_vehicle_screen.dart';
 
 class VehicleDetailsScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -15,16 +16,10 @@ class VehicleDetailsScreen extends StatefulWidget {
 }
 
 class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
-  late String _currentPrice;
 
-  @override
-  void initState() {
-    super.initState();
-    _currentPrice = widget.vehicle.price;
-  }
 
-  void _showEditPriceDialog() {
-    final controller = TextEditingController(text: _currentPrice);
+  void _showEditPriceDialog(Vehicle vehicle) {
+    final controller = TextEditingController(text: vehicle.price);
     showDialog(
       context: context,
       builder: (context) {
@@ -50,11 +45,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
               onPressed: () async {
                 final newPrice = controller.text.trim();
                 if (newPrice.isNotEmpty) {
-                  final success = await VehicleService().updateVehiclePrice(widget.vehicle.id, newPrice);
+                  final success = await VehicleService().updateVehiclePrice(vehicle.id, newPrice);
                   if (success) {
-                    setState(() {
-                      _currentPrice = newPrice;
-                    });
                     if (context.mounted) Navigator.pop(context);
                   } else {
                     if (context.mounted) {
@@ -79,10 +71,17 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E2C), // Dark Charcoal/Navy Background
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: ValueListenableBuilder<List<Vehicle>>(
+          valueListenable: VehicleService().vehiclesNotifier,
+          builder: (context, vehicles, child) {
+            final activeVehicle = vehicles.firstWhere(
+              (v) => v.id == widget.vehicle.id,
+              orElse: () => widget.vehicle,
+            );
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // Top Bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -93,9 +92,24 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                       icon: const Icon(LucideIcons.chevronLeft, color: Colors.white70),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    IconButton(
-                      icon: const Icon(LucideIcons.bookmark, color: Colors.white70),
-                      onPressed: () {},
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(LucideIcons.edit, color: Colors.white70),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddVehicleScreen(vehicleToEdit: activeVehicle),
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(LucideIcons.bookmark, color: Colors.white70),
+                          onPressed: () {},
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -108,7 +122,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.vehicle.name,
+                      activeVehicle.name,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 28,
@@ -117,7 +131,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                       ),
                     ),
                     Text(
-                      widget.vehicle.category,
+                      activeVehicle.category,
                       style: const TextStyle(
                         color: Colors.white38,
                         fontSize: 14,
@@ -150,17 +164,17 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                         ],
                       ),
                     ),
-                    if (widget.vehicle.imageUrls.isEmpty)
+                    if (activeVehicle.imageUrls.isEmpty)
                       InteractiveViewer(
-                        child: widget.vehicle.imageUrl.startsWith('http')
-                            ? Image.network(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity)
-                            : Image.asset(widget.vehicle.imageUrl, fit: BoxFit.contain, width: double.infinity),
+                        child: activeVehicle.imageUrl.startsWith('http')
+                            ? Image.network(activeVehicle.imageUrl, fit: BoxFit.contain, width: double.infinity)
+                            : Image.asset(activeVehicle.imageUrl, fit: BoxFit.contain, width: double.infinity),
                       )
                     else
                       PageView.builder(
-                        itemCount: widget.vehicle.imageUrls.length,
+                        itemCount: activeVehicle.imageUrls.length,
                         itemBuilder: (context, index) {
-                          final img = widget.vehicle.imageUrls[index];
+                          final img = activeVehicle.imageUrls[index];
                           return InteractiveViewer(
                             child: img.startsWith('http')
                                 ? Image.network(img, fit: BoxFit.contain, width: double.infinity)
@@ -170,12 +184,12 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                       ),
                     
                     // Small indicator dots for multiple images
-                    if (widget.vehicle.imageUrls.length > 1)
+                    if (activeVehicle.imageUrls.length > 1)
                       Positioned(
                         bottom: 10,
                         child: Row(
                           children: List.generate(
-                            widget.vehicle.imageUrls.length,
+                            activeVehicle.imageUrls.length,
                             (index) => Container(
                               margin: const EdgeInsets.symmetric(horizontal: 4),
                               width: 8,
@@ -218,12 +232,13 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildInfoRow('Chassis No', widget.vehicle.chassisNo),
-                      _buildInfoRow('Engine No', widget.vehicle.engineNo),
-                      _buildInfoRow('Registration No', widget.vehicle.registrationNo),
-                      _buildInfoRow('Colour', widget.vehicle.color),
-                      _buildInfoRow('Year', widget.vehicle.yearOfManufacture),
-                      _buildInfoRow('Amount', 'Rs. $_currentPrice', isBold: true),
+                      _buildInfoRow('Chassis No', activeVehicle.chassisNo),
+                      _buildInfoRow('Engine No', activeVehicle.engineNo),
+                      _buildInfoRow('Registration No', activeVehicle.registrationNo),
+                      _buildInfoRow('Colour', activeVehicle.color),
+                      _buildInfoRow('Year', activeVehicle.yearOfManufacture),
+                      _buildInfoRow('Fuel Type', activeVehicle.fuelType), // Added Fuel Type here!
+                      _buildInfoRow('Amount', 'Rs. ${activeVehicle.price}', isBold: true),
                     ],
                   ),
                 ),
@@ -276,7 +291,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       flex: 1,
-                      child: _buildPriceStateSection(_currentPrice),
+                      child: _buildPriceStateSection(activeVehicle),
                     ),
                   ],
                 ),
@@ -284,9 +299,9 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
               const SizedBox(height: 40),
             ],
           ),
-        ),
-      ),
-    );
+        );
+      }),
+    ));
   }
 
 
@@ -443,7 +458,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
     );
   }
 
-  Widget _buildPriceStateSection(String price) {
+  Widget _buildPriceStateSection(Vehicle vehicle) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -459,7 +474,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(price,
+              Text(vehicle.price,
                   style: const TextStyle(
                       color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
               const Padding(
@@ -471,7 +486,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
           const SizedBox(height: 16),
           // New Big Update Price Button
           GestureDetector(
-            onTap: _showEditPriceDialog,
+            onTap: () => _showEditPriceDialog(vehicle),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(

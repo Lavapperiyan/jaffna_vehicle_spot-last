@@ -20,6 +20,8 @@ class Invoice {
   final String year;
   final String amount;
   final String leaseAmount;
+  final String downPayment;
+  final String leaseCompany;
   final String date;
   final InvoiceStatus status;
   final String salesPersonId;
@@ -42,6 +44,8 @@ class Invoice {
     required this.year,
     required this.amount,
     required this.leaseAmount,
+    this.downPayment = '0',
+    this.leaseCompany = '',
     required this.date,
     required this.status,
     this.salesPersonId = '',
@@ -66,6 +70,8 @@ class Invoice {
       year: json['year'] ?? '',
       amount: json['amount']?.toString() ?? '0',
       leaseAmount: json['lease_amount']?.toString() ?? '0',
+      downPayment: json['down_payment']?.toString() ?? '0',
+      leaseCompany: json['lease_company'] ?? '',
       date: json['date'] ?? '',
       status: json['status'] == 'Paid' ? InvoiceStatus.paid : (json['status'] == 'Pending' ? InvoiceStatus.pending : InvoiceStatus.overdue),
       salesPersonId: json['sales_person_id'] ?? '',
@@ -75,7 +81,7 @@ class Invoice {
   }
 
   Map<String, dynamic> toJson({bool isNew = false}) => {
-    if (!isNew && id.isNotEmpty) 'id': id,
+    if (id.isNotEmpty) 'id': id,
     'customer_name': customerName,
     'customer_address': customerAddress,
     'customer_contact': customerContact,
@@ -90,6 +96,8 @@ class Invoice {
     'year': year,
     'amount': amount,
     'lease_amount': leaseAmount,
+    'down_payment': downPayment,
+    'lease_company': leaseCompany,
     'date': date,
     'status': status == InvoiceStatus.paid ? 'Paid' : (status == InvoiceStatus.pending ? 'Pending' : 'Overdue'),
     'sales_person_id': salesPersonId,
@@ -112,7 +120,8 @@ class InvoiceService {
     try {
       final response = await _supabase
           .from(ApiConfig.tableInvoices)
-          .select();
+          .select()
+          .order('created_at', ascending: false);
 
       final List<dynamic> data = response as List;
       invoicesNotifier.value = data.map((i) => Invoice.fromJson(i)).toList();
@@ -122,17 +131,20 @@ class InvoiceService {
     }
   }
 
-  Future<bool> addInvoice(Invoice invoice) async {
+  Future<Invoice?> addInvoice(Invoice invoice) async {
     try {
-      await _supabase
+      final response = await _supabase
           .from(ApiConfig.tableInvoices)
-          .insert(invoice.toJson(isNew: true));
+          .insert(invoice.toJson(isNew: true))
+          .select()
+          .single();
 
+      final newInvoice = Invoice.fromJson(response);
       await fetchInvoices();
-      return true;
+      return newInvoice;
     } catch (e) {
       debugPrint('Add invoice error: $e');
-      return false;
+      rethrow;
     }
   }
 
@@ -148,6 +160,45 @@ class InvoiceService {
     } catch (e) {
       debugPrint('Update invoice salesperson error: $e');
       return false;
+    }
+  }
+
+  Future<void> deleteInvoice(String id) async {
+    try {
+      debugPrint('Attempting to delete invoice with ID: $id');
+      
+      // Delete associated commissions first to avoid foreign key constraint violations
+      try {
+        await _supabase
+            .from(ApiConfig.tableCommissions)
+            .delete()
+            .eq('sale_id', id);
+        debugPrint('Successfully deleted associated commissions for invoice: $id');
+      } catch (e) {
+        debugPrint('Warning: Failed to delete associated commissions: $e');
+      }
+
+      // Delete from Supabase
+      final response = await _supabase
+          .from(ApiConfig.tableInvoices)
+          .delete()
+          .eq('id', id)
+          .select();
+
+      if ((response as List).isEmpty) {
+        debugPrint('Warning: No rows were deleted from database. ID might be incorrect.');
+        // If nothing was deleted from server, we should refresh to show it's still there
+        await fetchInvoices();
+        throw Exception('Invoice not found in database or permission denied. Please refresh and try again.');
+      } else {
+        debugPrint('Successfully deleted invoice from database.');
+        // Update local list only after successful DB deletion
+        invoicesNotifier.value = invoicesNotifier.value.where((inv) => inv.id != id).toList();
+      }
+    } catch (e) {
+      debugPrint('Delete invoice error: $e');
+      await fetchInvoices();
+      rethrow;
     }
   }
 }

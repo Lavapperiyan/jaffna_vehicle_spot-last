@@ -34,7 +34,7 @@ class ManagerSettingsScreen extends StatelessWidget {
               phone: '',
               mobileNo: '',
               homeNo: '',
-              email: authService.userName.toLowerCase().replaceAll(' ', '') + '@jaffnavspot.com',
+              email: '${authService.userName.toLowerCase().replaceAll(' ', '')}@jaffnavspot.com',
               joinDate: 'N/A',
               branch: authService.branch,
               postalAddress: '',
